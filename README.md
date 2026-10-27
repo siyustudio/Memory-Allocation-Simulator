@@ -4,7 +4,7 @@ Aplikasi simulasi visualisasi alokasi memori OS berbasis web
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live%20Web-brightgreen)](https://USERNAME_GITHUB.github.io/Memory-Allocation-Simulator/)
 
-> **Link Aplikasi Live:** [https://USERNAME_GITHUB.github.io/Memory-Allocation-Simulator/](https://USERNAME_GITHUB.github.io/Memory-Allocation-Simulator/)
+> **Link Aplikasi Live:** [https://siyustudio.github.io/Memory-Allocation-Simulator/](https://siyustudio.github.io/Memory-Allocation-Simulator/)
 
 ---
 
