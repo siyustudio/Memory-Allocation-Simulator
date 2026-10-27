@@ -1,5 +1,3 @@
-# Memory-Allocation-Simulator
-Aplikasi simulasi visualisasi alokasi memori OS berbasis web
 # Memory Allocation Simulator
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live%20Web-brightgreen)](https://USERNAME_GITHUB.github.io/Memory-Allocation-Simulator/)
