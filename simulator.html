@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory Allocation Simulator - Sistem Operasi</title>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          keyframes: {
+            'pulse-slow': {
+              '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+              '50%': { opacity: '0.7', transform: 'scale(1.08)' }
+            },
+            'float-slow': {
+              '0%, 100%': { transform: 'translate(0px, 0px) rotate(0deg)' },
+              '33%': { transform: 'translate(30px, -20px) rotate(4deg)' },
+              '66%': { transform: 'translate(-20px, 20px) rotate(-4deg)' },
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse-slow 8s ease-in-out infinite',
+            'float-slow': 'float-slow 16s ease-in-out infinite',
+          }
+        }
+      }
+    };
+  </script>
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- jsPDF & autoTable CDN for PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    /* Sleek custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.4); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.7); }
+    .dark ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.6); }
+    .dark ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.9); }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-600 selection:text-white overflow-hidden transition-colors duration-200">
+  
+  <!-- Diagnostic Error Fallback (Only shows if JS fails to run) -->
+  <div id="error-fallback" style="display:none; padding:20px; margin:20px; background:#fee2e2; border:1px solid #ef4444; border-radius:12px; color:#991b1b; font-family:sans-serif;">
+    <h3 style="font-weight:bold; margin-bottom:8px;">Terjadi Kesalahan Saat Menjalankan Aplikasi:</h3>
+    <pre id="error-message" style="white-space:pre-wrap; font-size:12px;"></pre>
+  </div>
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      var box = document.getElementById('error-fallback');
+      var txt = document.getElementById('error-message');
+      if (box && txt) {
+        box.style.display = 'block';
+        txt.innerText = msg + '\nLokasi: ' + url + ':' + line + ':' + col + '\n' + (error ? error.stack : '');
+      }
+    };
+  </script>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- CLEAN INLINE SVG ICONS (100% Reliable & Zero Encoding Glitches) ---
+    const IconCpu = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>
+      </svg>
+    );
+
+    const IconLayers = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+      </svg>
+    );
+
+    const IconCheck = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    );
+
+    const IconAlert = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    );
+
+    const IconPlay = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+    );
+
+    const IconPause = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+      </svg>
+    );
+
+    const IconSun = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+    );
+
+    const IconMoon = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+      </svg>
+    );
+
+    const IconTrash = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+      </svg>
+    );
+
+    const IconPlus = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    );
+
+    const IconRotateCcw = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+      </svg>
+    );
+
+    const IconDownload = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    );
+
+    const IconHelp = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    );
+
+    const IconSparkles = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+      </svg>
+    );
+
+    const IconArrowLeft = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
+    );
+
+    const IconArrowRight = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+      </svg>
+    );
+
+    const IconChevronLeft = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    );
+
+    const IconChevronRight = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    );
+
+    const IconSkipBack = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/>
+      </svg>
+    );
+
+    const IconSkipForward = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>
+      </svg>
+    );
+
+    const IconBoxes = ({ className = "w-4 h-4" }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l6 3.43a2 2 0 0 0 2.06 0l6-3.43a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L11 9.49a2 2 0 0 0-2.06 0l-5.97 3.43Z"/><path d="m12 13 6.97-3.92A2 2 0 0 0 20 7.37V4.13a2 2 0 0 0-.97-1.71l-6-3.43a2 2 0 0 0-2.06 0l-6 3.43A2 2 0 0 0 4 4.13v3.24a2 2 0 0 0 .97 1.71L12 13Z"/>
+      </svg>
+    );
+
+    // --- BENCHMARK PRESETS ---
+    const PRESETS = [
+      {
+        name: 'Buku Silberschatz',
+        description: 'Contoh klasik: Holes (100, 500, 200, 300, 600 KB); Proses (212, 417, 112, 426 KB)',
+        holes: [
+          { id: 'h1', name: 'Blok 1', size: 100, allocatedProcess: null, usedSize: 0, remainingSize: 100 },
+          { id: 'h2', name: 'Blok 2', size: 500, allocatedProcess: null, usedSize: 0, remainingSize: 500 },
+          { id: 'h3', name: 'Blok 3', size: 200, allocatedProcess: null, usedSize: 0, remainingSize: 200 },
+          { id: 'h4', name: 'Blok 4', size: 300, allocatedProcess: null, usedSize: 0, remainingSize: 300 },
+          { id: 'h5', name: 'Blok 5', size: 600, allocatedProcess: null, usedSize: 0, remainingSize: 600 },
+        ],
+        processes: [
+          { id: 'p1', name: 'P1', size: 212, color: 'from-emerald-500 to-teal-600' },
+          { id: 'p2', name: 'P2', size: 417, color: 'from-blue-500 to-indigo-600' },
+          { id: 'p3', name: 'P3', size: 112, color: 'from-purple-500 to-fuchsia-600' },
+          { id: 'p4', name: 'P4', size: 426, color: 'from-amber-500 to-orange-600' },
+        ],
+      },
+      {
+        name: 'Partisi Merata',
+        description: 'Blok berukuran 256 KB dengan variasi ukuran proses',
+        holes: [
+          { id: 'h1', name: 'Blok 1', size: 256, allocatedProcess: null, usedSize: 0, remainingSize: 256 },
+          { id: 'h2', name: 'Blok 2', size: 256, allocatedProcess: null, usedSize: 0, remainingSize: 256 },
+          { id: 'h3', name: 'Blok 3', size: 256, allocatedProcess: null, usedSize: 0, remainingSize: 256 },
+          { id: 'h4', name: 'Blok 4', size: 256, allocatedProcess: null, usedSize: 0, remainingSize: 256 },
+        ],
+        processes: [
+          { id: 'p1', name: 'P1', size: 80, color: 'from-cyan-500 to-blue-600' },
+          { id: 'p2', name: 'P2', size: 220, color: 'from-emerald-500 to-teal-600' },
+          { id: 'p3', name: 'P3', size: 130, color: 'from-indigo-500 to-violet-600' },
+          { id: 'p4', name: 'P4', size: 270, color: 'from-rose-500 to-pink-600' },
+        ],
+      },
+      {
+        name: 'Beban Tinggi',
+        description: 'Banyak proses berebut sedikit blok untuk menguji proses gagal',
+        holes: [
+          { id: 'h1', name: 'Blok 1', size: 150, allocatedProcess: null, usedSize: 0, remainingSize: 150 },
+          { id: 'h2', name: 'Blok 2', size: 350, allocatedProcess: null, usedSize: 0, remainingSize: 350 },
+          { id: 'h3', name: 'Blok 3', size: 200, allocatedProcess: null, usedSize: 0, remainingSize: 200 },
+        ],
+        processes: [
+          { id: 'p1', name: 'P1', size: 180, color: 'from-emerald-500 to-teal-600' },
+          { id: 'p2', name: 'P2', size: 300, color: 'from-blue-500 to-indigo-600' },
+          { id: 'p3', name: 'P3', size: 120, color: 'from-purple-500 to-fuchsia-600' },
+          { id: 'p4', name: 'P4', size: 400, color: 'from-rose-500 to-pink-600' },
+          { id: 'p5', name: 'P5', size: 90, color: 'from-amber-500 to-orange-600' },
+        ],
+      },
+    ];
+
+    const PROCESS_PALETTES = [
+      'from-emerald-500 to-teal-600',
+      'from-blue-500 to-indigo-600',
+      'from-purple-500 to-fuchsia-600',
+      'from-amber-500 to-orange-600',
+      'from-cyan-500 to-blue-600',
+      'from-pink-500 to-rose-600',
+    ];
+
+    const PASTEL_PACKAGES = [
+      { bg: 'bg-emerald-100 dark:bg-emerald-950/80', border: 'border-emerald-300 dark:border-emerald-700' },
+      { bg: 'bg-blue-100 dark:bg-blue-950/80', border: 'border-blue-300 dark:border-blue-700' },
+      { bg: 'bg-purple-100 dark:bg-purple-950/80', border: 'border-purple-300 dark:border-purple-700' },
+      { bg: 'bg-amber-100 dark:bg-amber-950/80', border: 'border-amber-300 dark:border-amber-700' },
+      { bg: 'bg-cyan-100 dark:bg-cyan-950/80', border: 'border-cyan-300 dark:border-cyan-700' },
+      { bg: 'bg-rose-100 dark:bg-rose-950/80', border: 'border-rose-300 dark:border-rose-700' },
+    ];
+
+    function cloneHoles(holes) {
+      return holes.map(h => ({
+        ...h,
+        allocatedProcess: h.allocatedProcess ? { ...h.allocatedProcess } : null,
+      }));
+    }
+
+    function calculateMetrics(holes, failedProcesses, totalProcessesCount) {
+      const totalCapacity = holes.reduce((acc, h) => acc + h.size, 0);
+      const totalUsed = holes.reduce((acc, h) => acc + h.usedSize, 0);
+      const totalFree = holes.reduce((acc, h) => acc + h.remainingSize, 0);
+      const internalFragmentation = holes.reduce((acc, h) => {
+        return h.allocatedProcess ? acc + h.remainingSize : acc;
+      }, 0);
+
+      const usedPercentage = totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
+      const freePercentage = totalCapacity > 0 ? (totalFree / totalCapacity) * 100 : 0;
+      
+      const occupiedHolesCapacity = holes.reduce(
+        (acc, h) => (h.allocatedProcess ? acc + h.size : acc),
+        0
+      );
+      const efficiencyPercentage =
+        occupiedHolesCapacity > 0
+          ? (totalUsed / occupiedHolesCapacity) * 100
+          : totalCapacity > 0 && totalUsed > 0
+          ? (totalUsed / totalCapacity) * 100
+          : 100;
+
+      const allocatedCount = holes.filter(h => h.allocatedProcess !== null).length;
+      const failedCount = failedProcesses.length;
+
+      return {
+        totalCapacity,
+        totalUsed,
+        totalFree,
+        usedPercentage: Number(usedPercentage.toFixed(1)),
+        freePercentage: Number(freePercentage.toFixed(1)),
+        internalFragmentation,
+        efficiencyPercentage: Number(efficiencyPercentage.toFixed(1)),
+        allocatedCount,
+        failedCount,
+        totalProcesses: totalProcessesCount,
+      };
+    }
+
+    function generateAlgorithmSteps(algorithm, initialHoles, processes) {
+      const steps = [];
+      let currentHoles = initialHoles.map((h, index) => ({
+        id: h.id || `hole-${index + 1}`,
+        name: h.name || `Blok ${index + 1}`,
+        size: h.size,
+        allocatedProcess: null,
+        usedSize: 0,
+        remainingSize: h.size,
+      }));
+
+      const allocatedList = [];
+      const failedList = [];
+
+      const initialMetrics = calculateMetrics(currentHoles, failedList, processes.length);
+      steps.push({
+        stepNumber: 0,
+        process: null,
+        action: 'start',
+        targetHoleId: null,
+        description: currentHoles.length === 0
+          ? 'Memori RAM belum diatur. Tambahkan blok memori (hole) di sidebar untuk memulai.'
+          : `Kondisi Awal: RAM memiliki ${currentHoles.length} blok memori kosong (${initialMetrics.totalCapacity} KB). Antrean: ${processes.length} proses.`,
+        holesState: cloneHoles(currentHoles),
+        allocatedProcesses: [...allocatedList],
+        failedProcesses: [...failedList],
+        metrics: initialMetrics,
+      });
+
+      for (let i = 0; i < processes.length; i++) {
+        const process = processes[i];
+        let selectedHoleIndex = -1;
+
+        if (algorithm === 'first-fit') {
+          for (let j = 0; j < currentHoles.length; j++) {
+            if (!currentHoles[j].allocatedProcess && currentHoles[j].size >= process.size) {
+              selectedHoleIndex = j;
+              break;
+            }
+          }
+        } else if (algorithm === 'best-fit') {
+          let minDifference = Infinity;
+          for (let j = 0; j < currentHoles.length; j++) {
+            if (!currentHoles[j].allocatedProcess && currentHoles[j].size >= process.size) {
+              const diff = currentHoles[j].size - process.size;
+              if (diff < minDifference) {
+                minDifference = diff;
+                selectedHoleIndex = j;
+              }
+            }
+          }
+        } else if (algorithm === 'worst-fit') {
+          let maxDifference = -1;
+          for (let j = 0; j < currentHoles.length; j++) {
+            if (!currentHoles[j].allocatedProcess && currentHoles[j].size >= process.size) {
+              const diff = currentHoles[j].size - process.size;
+              if (diff > maxDifference) {
+                maxDifference = diff;
+                selectedHoleIndex = j;
+              }
+            }
+          }
+        }
+
+        if (selectedHoleIndex !== -1) {
+          const targetHole = currentHoles[selectedHoleIndex];
+          const remaining = targetHole.size - process.size;
+
+          currentHoles = currentHoles.map((h, idx) => {
+            if (idx === selectedHoleIndex) {
+              return {
+                ...h,
+                allocatedProcess: { ...process },
+                usedSize: process.size,
+                remainingSize: remaining,
+              };
+            }
+            return h;
+          });
+
+          allocatedList.push({
+            process: { ...process },
+            holeId: targetHole.id,
+            holeName: targetHole.name,
+          });
+
+          const algoLabel =
+            algorithm === 'first-fit'
+              ? 'First Fit (blok pertama yang muat)'
+              : algorithm === 'best-fit'
+              ? 'Best Fit (blok terkecil yang muat)'
+              : 'Worst Fit (blok terbesar yang muat)';
+
+          const currentMetrics = calculateMetrics(currentHoles, failedList, processes.length);
+
+          steps.push({
+            stepNumber: steps.length,
+            process: { ...process },
+            action: 'allocated',
+            targetHoleId: targetHole.id,
+            description: `Proses ${process.name} (${process.size} KB) dialokasikan ke ${targetHole.name} (${targetHole.size} KB) via ${algoLabel}. Sisa fragmentasi internal: ${remaining} KB.`,
+            holesState: cloneHoles(currentHoles),
+            allocatedProcesses: [...allocatedList],
+            failedProcesses: [...failedList],
+            metrics: currentMetrics,
+          });
+        } else {
+          failedList.push({ ...process });
+          const currentMetrics = calculateMetrics(currentHoles, failedList, processes.length);
+
+          steps.push({
+            stepNumber: steps.length,
+            process: { ...process },
+            action: 'failed',
+            targetHoleId: null,
+            description: `Alokasi Gagal: Proses ${process.name} (${process.size} KB) tidak dapat ditempatkan karena tidak ada blok kosong yang mencukupi.`,
+            holesState: cloneHoles(currentHoles),
+            allocatedProcesses: [...allocatedList],
+            failedProcesses: [...failedList],
+            metrics: currentMetrics,
+          });
+        }
+      }
+
+      const finalMetrics = calculateMetrics(currentHoles, failedList, processes.length);
+      steps.push({
+        stepNumber: steps.length,
+        process: null,
+        action: 'completed',
+        targetHoleId: null,
+        description: processes.length === 0
+          ? 'Belum ada proses yang dimasukkan.'
+          : `Simulasi Selesai: ${allocatedList.length} dari ${processes.length} proses berhasil dialokasikan (${finalMetrics.usedPercentage}% memori terpakai, ${failedList.length} proses gagal).`,
+        holesState: cloneHoles(currentHoles),
+        allocatedProcesses: [...allocatedList],
+        failedProcesses: [...failedList],
+        metrics: finalMetrics,
+      });
+
+      return steps;
+    }
+
+    function simulateAllAlgorithms(holes, processes) {
+      const getResult = (algo) => {
+        const steps = generateAlgorithmSteps(algo, holes, processes);
+        const finalStep = steps[steps.length - 1];
+        return {
+          algorithm: algo,
+          steps,
+          finalHoles: finalStep.holesState,
+          allocatedProcesses: finalStep.allocatedProcesses,
+          failedProcesses: finalStep.failedProcesses,
+          metrics: finalStep.metrics,
+        };
+      };
+
+      return {
+        'first-fit': getResult('first-fit'),
+        'best-fit': getResult('best-fit'),
+        'worst-fit': getResult('worst-fit'),
+      };
+    }
+
+    // PDF Export Helpers
+    function exportSinglePDF(algo, currentStep, holes, processes) {
+      if (!window.jspdf) {
+        alert('Modul PDF belum selesai dimuat. Silakan periksa koneksi internet Anda.');
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const metrics = currentStep.metrics;
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      doc.setFillColor(37, 99, 235);
+      doc.rect(0, 40, pageWidth, 2, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('MEMORY ALLOCATION SIMULATOR REPORT', 14, 16);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(203, 213, 225);
+      doc.text('Algoritma: ' + algo.toUpperCase() + ' - Tanggal: ' + new Date().toLocaleString('id-ID'), 14, 25);
+
+      const summaryData = [
+        ['Total Kapasitas RAM', `${metrics.totalCapacity} KB`, 'Memori Terpakai', `${metrics.totalUsed} KB (${metrics.usedPercentage}%)`],
+        ['Sisa Memori Kosong', `${metrics.totalFree} KB`, 'Fragmentasi Internal', `${metrics.internalFragmentation} KB`],
+        ['Proses Teralokasi', `${metrics.allocatedCount} Proses`, 'Proses Gagal', `${metrics.failedCount} Proses`],
+        ['Efisiensi Alokasi', `${metrics.efficiencyPercentage}%`, 'Total Antrean', `${metrics.totalProcesses} Proses`]
+      ];
+
+      doc.autoTable({
+        startY: 50,
+        theme: 'grid',
+        head: [['Parameter', 'Nilai', 'Parameter', 'Nilai']],
+        body: summaryData,
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8.5, cellPadding: 2.5 }
+      });
+
+      const holesData = currentStep.holesState.map((h, i) => [
+        `${i + 1}`,
+        h.name,
+        `${h.size} KB`,
+        h.allocatedProcess ? h.allocatedProcess.name : '-',
+        h.allocatedProcess ? `${h.usedSize} KB` : '0 KB',
+        h.allocatedProcess ? `${h.remainingSize} KB` : `${h.size} KB`,
+        h.allocatedProcess ? 'Terisi' : 'Kosong'
+      ]);
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 10,
+        theme: 'grid',
+        head: [['No', 'Blok Memori', 'Kapasitas', 'Proses', 'Terpakai', 'Sisa (Frag.)', 'Status']],
+        body: holesData.length ? holesData : [['-', 'Belum ada blok', '-', '-', '-', '-', '-']],
+        headStyles: { fillColor: [30, 41, 59], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 }
+      });
+
+      doc.save('Memory_Report_' + algo.toUpperCase() + '_' + Date.now() + '.pdf');
+    }
+
+    function exportComparePDF(results, holes, processes) {
+      if (!window.jspdf) {
+        alert('Modul PDF belum selesai dimuat.');
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      doc.setFillColor(14, 165, 233);
+      doc.rect(0, 40, pageWidth, 2, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(17);
+      doc.text('MEMORY ALLOCATION COMPARATIVE REPORT', 14, 16);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(203, 213, 225);
+      doc.text('Perbandingan 3 Algoritma - Tanggal: ' + new Date().toLocaleString('id-ID'), 14, 25);
+
+      const ff = results['first-fit'].metrics;
+      const bf = results['best-fit'].metrics;
+      const wf = results['worst-fit'].metrics;
+
+      const compareRows = [
+        ['Memori Terpakai', `${ff.totalUsed} KB (${ff.usedPercentage}%)`, `${bf.totalUsed} KB (${bf.usedPercentage}%)`, `${wf.totalUsed} KB (${wf.usedPercentage}%)`],
+        ['Fragmentasi Internal', `${ff.internalFragmentation} KB`, `${bf.internalFragmentation} KB`, `${wf.internalFragmentation} KB`],
+        ['Proses Berhasil', `${ff.allocatedCount}/${ff.totalProcesses}`, `${bf.allocatedCount}/${bf.totalProcesses}`, `${wf.allocatedCount}/${wf.totalProcesses}`],
+        ['Proses Gagal', `${ff.failedCount} Proses`, `${bf.failedCount} Proses`, `${wf.failedCount} Proses`],
+        ['Efisiensi Alokasi', `${ff.efficiencyPercentage}%`, `${bf.efficiencyPercentage}%`, `${wf.efficiencyPercentage}%`],
+      ];
+
+      doc.autoTable({
+        startY: 50,
+        theme: 'grid',
+        head: [['Indikator Kinerja', 'First Fit', 'Best Fit', 'Worst Fit']],
+        body: compareRows,
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8.5, cellPadding: 3 }
+      });
+
+      doc.save('Memory_Comparison_Report_' + Date.now() + '.pdf');
+    }
+
+    // Component: TourModal
+    function TourModal({ isOpen, onClose }) {
+      const [currentStep, setCurrentStep] = useState(0);
+      if (!isOpen) return null;
+
+      const steps = [
+        {
+          title: 'Selamat Datang di Memory Allocation Simulator',
+          subtitle: 'Panduan Singkat Penggunaan Aplikasi',
+          icon: <IconSparkles className="w-8 h-8 text-blue-600 dark:text-blue-400" />,
+          text: 'Aplikasi ini dirancang untuk mensimulasikan algoritma alokasi memori komputer: First Fit, Best Fit, dan Worst Fit. Amati penempatan proses dan sisa fragmentasi internal secara interaktif.'
+        },
+        {
+          title: '1. Input Blok Memori & Antrean Proses',
+          subtitle: 'Kelola Data pada Sidebar Kiri',
+          icon: <IconLayers className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
+          text: 'Gunakan formulir pada sidebar sebelah kiri untuk menambahkan Blok Memori (Hole) dan Antrean Proses. Anda juga dapat menggunakan tombol Preset untuk memuat contoh kasus secara otomatis.'
+        },
+        {
+          title: '2. Pemilihan Algoritma Alokasi',
+          subtitle: 'First Fit vs Best Fit vs Worst Fit',
+          icon: <IconCpu className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />,
+          text: 'Pilih algoritma yang diinginkan: First Fit menempati blok pertama yang muat, Best Fit menempati blok terkecil yang muat (minimal fragmentasi), dan Worst Fit menempati blok terbesar.'
+        },
+        {
+          title: '3. Conveyor Belt & Playback Control',
+          subtitle: 'Pantau Antrean Paket & Transisi Animasi',
+          icon: <IconPlay className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />,
+          text: 'Amati Paket Proses Conveyor Belt di atas canvas RAM. Gunakan tombol Play/Pause dan Step Forward/Backward untuk mengamati alokasi langkah demi langkah.'
+        },
+        {
+          title: '4. Compare View & Ekspor PDF',
+          subtitle: 'Analisis Komparatif & Cetak Laporan',
+          icon: <IconDownload className="w-8 h-8 text-amber-600 dark:text-amber-400" />,
+          text: 'Gunakan Compare View untuk membandingkan ketiga algoritma sekaligus secara berdampingan. Unduh laporan pengujian lengkap dalam format PDF dengan satu klik.'
+        }
+      ];
+
+      const step = steps[currentStep];
+
+      const handleNextStep = () => {
+        if (currentStep < steps.length - 1) {
+          setCurrentStep(prev => prev + 1);
+        } else {
+          onClose();
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm select-none">
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-6 sm:p-7 relative text-slate-900 dark:text-white">
+            <button onClick={onClose} className="absolute top-5 right-5 p-1 text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold text-lg">
+              ✕
+            </button>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                {step.icon}
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                  Langkah {currentStep + 1} dari {steps.length}
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">{step.title}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{step.subtitle}</p>
+              </div>
+            </div>
+            <div className="py-3 border-y border-slate-100 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed min-h-[90px]">
+              {step.text}
+            </div>
+            <div className="flex items-center justify-between pt-4">
+              <div className="flex gap-1.5">
+                {steps.map((_, i) => (
+                  <span key={i} className={`h-2 rounded-full transition-all ${i === currentStep ? 'w-6 bg-blue-600' : 'w-2 bg-slate-300 dark:bg-slate-700'}`} />
+                ))}
+              </div>
+              <div className="flex gap-2">
+                {currentStep > 0 && (
+                  <button onClick={() => setCurrentStep(p => p - 1)} className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200">
+                    Sebelumnya
+                  </button>
+                )}
+                <button
+                  onClick={handleNextStep}
+                  className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md"
+                >
+                  {currentStep === steps.length - 1 ? 'Selesai' : 'Lanjut'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Component: ConveyorBelt
+    function ConveyorBelt({ processes, currentStep }) {
+      if (processes.length === 0) return null;
+      const activeProcessId = currentStep.process ? currentStep.process.id : null;
+
+      return (
+        <div className="w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3.5 shadow-sm select-none">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 text-xs font-bold">
+                <IconBoxes className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">Paket Proses Conveyor Belt</h3>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">Antrean paket proses yang dievaluasi ke blok RAM</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+              Total: {processes.length} Paket
+            </span>
+          </div>
+
+          <div className="relative w-full overflow-x-auto pb-1 pt-1">
+            <div className="flex items-center gap-3 min-w-max">
+              {processes.map((proc, index) => {
+                const pastel = PASTEL_PACKAGES[index % PASTEL_PACKAGES.length];
+                const isCurrentActive = activeProcessId === proc.id;
+                const allocatedInfo = currentStep.allocatedProcesses.find(a => a.process.id === proc.id);
+                const isFailed = currentStep.failedProcesses.some(f => f.id === proc.id);
+
+                let statusText = 'Menunggu';
+                let statusClass = 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300';
+
+                if (allocatedInfo) {
+                  statusText = '✓ Ke ' + allocatedInfo.holeName;
+                  statusClass = 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold';
+                } else if (isFailed) {
+                  statusText = '⚠️ Gagal';
+                  statusClass = 'bg-rose-500/20 text-rose-800 dark:text-rose-300 font-bold';
+                } else if (isCurrentActive) {
+                  statusText = '⚡ Dievaluasi';
+                  statusClass = 'bg-blue-500/20 text-blue-800 dark:text-blue-300 font-bold animate-pulse';
+                }
+
+                return (
+                  <div
+                    key={proc.id}
+                    className={`flex flex-col justify-between p-2.5 rounded-2xl border-2 transition-all w-44 shrink-0 shadow-sm ${
+                      isCurrentActive ? 'ring-4 ring-blue-500/30 border-blue-500 scale-105 shadow-md' : pastel.border
+                    } ${pastel.bg}`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="font-extrabold text-sm text-slate-900 dark:text-white">{proc.name}</span>
+                      <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-lg bg-white/90 dark:bg-black/40 text-slate-900 dark:text-white shadow-xs">
+                        {proc.size} KB
+                      </span>
+                    </div>
+                    <div className={`mt-1 flex items-center justify-center py-1 rounded-xl text-[10px] font-bold ${statusClass}`}>
+                      {statusText}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Component: VerticalProgressBar
+    function VerticalProgressBar({ hole, isHighlighted = false, compact = false }) {
+      const isOccupied = hole.allocatedProcess !== null;
+      const usedPercent = Math.min(100, Math.max(0, (hole.usedSize / hole.size) * 100));
+      const remainingPercent = Math.max(0, 100 - usedPercent);
+      const processGradient = hole.allocatedProcess?.color || 'from-emerald-500 to-teal-600';
+
+      return (
+        <div className={`flex flex-col items-center transition-all duration-300 ${compact ? 'w-24 sm:w-28' : 'w-36 sm:w-44'}`}>
+          <div className="w-full mb-2 text-center">
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-xs">
+              <span className="font-bold text-slate-900 dark:text-slate-100 truncate" title={hole.name}>
+                {hole.name}
+              </span>
+              <span className="font-mono font-black text-blue-600 dark:text-blue-400 text-[11px]">
+                {hole.size} KB
+              </span>
+            </div>
+          </div>
+
+          <div
+            className={`w-full relative flex flex-col justify-end p-1.5 rounded-2xl transition-all duration-500 border-2 ${
+              isHighlighted
+                ? 'border-blue-600 dark:border-blue-400 ring-4 ring-blue-500/20 shadow-xl scale-[1.02]'
+                : 'border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 shadow-inner'
+            } ${compact ? 'h-64' : 'h-80 sm:h-96'}`}
+          >
+            {remainingPercent > 0 && (
+              <div
+                style={{ height: `${remainingPercent}%` }}
+                className={`w-full transition-all duration-500 rounded-xl flex flex-col items-center justify-center p-1.5 text-center relative overflow-hidden ${
+                  isOccupied
+                    ? 'bg-amber-100 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700/60 text-amber-950 dark:text-amber-200'
+                    : 'bg-slate-200/70 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                }`}
+              >
+                {isOccupied ? (
+                  <div className="flex flex-col items-center justify-center space-y-0.5">
+                    <span className="text-[10px] font-extrabold uppercase text-amber-900 dark:text-amber-300">{compact ? 'Sisa' : 'Fragmentasi'}</span>
+                    <span className="font-mono font-black text-xs text-amber-950 dark:text-amber-300 bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">{hole.remainingSize} KB</span>
+                    {!compact && remainingPercent > 18 && (
+                      <span className="text-[9px] font-bold text-amber-800 dark:text-amber-400">({remainingPercent.toFixed(0)}%)</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center space-y-1 text-slate-700 dark:text-slate-300">
+                    <IconLayers className="w-4 h-4 opacity-60 text-slate-700 dark:text-slate-300" />
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">Kosong</span>
+                    <span className="font-mono text-xs font-black text-slate-900 dark:text-slate-100 bg-slate-300/60 dark:bg-slate-700/60 px-1.5 py-0.5 rounded">{hole.size} KB</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isOccupied && remainingPercent > 0 && <div className="h-1.5 shrink-0" />}
+
+            {isOccupied && hole.allocatedProcess && (
+              <div
+                style={{ height: `${usedPercent}%` }}
+                className={`w-full transition-all duration-700 ease-out rounded-xl bg-gradient-to-t ${processGradient} text-white shadow-md p-2 flex flex-col justify-between relative overflow-hidden`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-black text-xs sm:text-sm tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] flex items-center gap-1">
+                    <IconCpu className="w-3.5 h-3.5 opacity-90" />
+                    {hole.allocatedProcess.name}
+                  </span>
+                  <span className="text-xs text-white font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">✓</span>
+                </div>
+                <div className="flex flex-col items-start mt-auto pt-1">
+                  <span className="font-mono font-black text-xs sm:text-sm text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] bg-black/25 px-1.5 py-0.5 rounded">
+                    {hole.usedSize} KB
+                  </span>
+                  {!compact && <span className="text-[10px] text-white font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] mt-0.5">Terpakai {usedPercent.toFixed(0)}%</span>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-2 text-center">
+            <span
+              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
+                isOccupied
+                  ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+              }`}
+            >
+              {isOccupied ? `Terisi: ${hole.allocatedProcess?.name}` : 'Tersedia'}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Component: CompareView
+    function CompareView({ results, onExportPDF }) {
+      const algos = [
+        { id: 'first-fit', name: 'First Fit', subtitle: 'Blok pertama yang muat', result: results['first-fit'] },
+        { id: 'best-fit', name: 'Best Fit', subtitle: 'Blok terkecil yang muat', result: results['best-fit'] },
+        { id: 'worst-fit', name: 'Worst Fit', subtitle: 'Blok terbesar yang muat', result: results['worst-fit'] },
+      ];
+
+      const hasHoles = results['first-fit'].finalHoles.length > 0;
+      const minFailed = Math.min(...algos.map((a) => a.result.metrics.failedCount));
+      const candidateWinners = algos.filter((a) => a.result.metrics.failedCount === minFailed);
+      const minFragmentation = Math.min(
+        ...candidateWinners.map((a) => a.result.metrics.internalFragmentation)
+      );
+      const winner = candidateWinners.find((a) => a.result.metrics.internalFragmentation === minFragmentation) || algos[0];
+
+      if (!hasHoles) {
+        return (
+          <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center rounded-3xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm select-none">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Data Memori Masih Kosong</h3>
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300 max-w-md mt-1.5 leading-relaxed">
+              Tambahkan Blok Memori (Hole) dan Antrean Proses di Sidebar Kiri untuk melihat visualisasi perbandingan komparatif.
+            </p>
+          </div>
+        );
+      }
+
+      return (
+        <div className="w-full h-full flex flex-col space-y-4 overflow-y-auto pr-1 select-none">
+          <div className="flex flex-wrap items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-xs gap-3">
+            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <IconSparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="font-extrabold text-slate-900 dark:text-white">Perbandingan Head-to-Head 3 Algoritma</span>
+              <span className="hidden sm:inline text-slate-500 dark:text-slate-400">• Hasil alokasi komprehensif setelah seluruh proses selesai.</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-slate-900 px-3 py-1 rounded-xl border border-amber-200 dark:border-slate-700">
+                🏆 Optimal: <strong className="text-amber-700 dark:text-amber-400">{winner.name}</strong>
+              </span>
+              <button
+                onClick={onExportPDF}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20"
+              >
+                <IconDownload className="w-3.5 h-3.5" />
+                <span>Ekspor PDF Komparasi</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pb-12">
+            {algos.map(({ id, name, subtitle, result }) => {
+              const isWinner = result.metrics.failedCount === minFailed && result.metrics.internalFragmentation === minFragmentation;
+              return (
+                <div
+                  key={id}
+                  className={`flex flex-col rounded-3xl p-4 transition-all border ${
+                    isWinner
+                      ? 'bg-white dark:bg-slate-800 border-2 border-blue-500 dark:border-blue-400 shadow-lg'
+                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                        {name}
+                        {isWinner && <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-black border border-amber-300">🏆 TERBAIK</span>}
+                      </h3>
+                      <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400 mt-0.5">{subtitle}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">Memori Terpakai</span>
+                      <div className="text-base font-black text-blue-600 dark:text-blue-400 font-mono mt-0.5">{result.metrics.usedPercentage}%</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">Frag. Internal</span>
+                      <div className="text-base font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">{result.metrics.internalFragmentation} KB</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">Teralokasi</span>
+                      <div className="text-base font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{result.allocatedProcesses.length} / {result.metrics.totalProcesses}</div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">Proses Gagal</span>
+                      <div className={`text-base font-black font-mono mt-0.5 ${result.failedProcesses.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                        {result.failedProcesses.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-900/80 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 flex items-end justify-center gap-2 overflow-x-auto min-h-[300px]">
+                    {result.finalHoles.map((h) => (
+                      <VerticalProgressBar key={h.id} hole={h} compact={true} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // Component: Sidebar
+    function Sidebar({
+      theme,
+      onToggleTheme,
+      holes,
+      onAddHole,
+      onDeleteHole,
+      processes,
+      onAddProcess,
+      onDeleteProcess,
+      algorithm,
+      onChangeAlgorithm,
+      failedCount,
+      onResetToEmpty,
+      onLoadPreset,
+    }) {
+      const [holeName, setHoleName] = useState(`Blok ${holes.length + 1}`);
+      const [holeSize, setHoleSize] = useState('');
+      const [processName, setProcessName] = useState(`P${processes.length + 1}`);
+      const [processSize, setProcessSize] = useState('');
+
+      const totalRamCapacity = holes.reduce((acc, h) => acc + h.size, 0);
+
+      const handleCreateHole = (e) => {
+        e.preventDefault();
+        const sizeNum = parseInt(holeSize, 10);
+        if (!sizeNum || sizeNum <= 0) return;
+        onAddHole(holeName.trim() || `Blok ${holes.length + 1}`, sizeNum);
+        setHoleName(`Blok ${holes.length + 2}`);
+        setHoleSize('');
+      };
+
+      const handleCreateProcess = (e) => {
+        e.preventDefault();
+        const sizeNum = parseInt(processSize, 10);
+        if (!sizeNum || sizeNum <= 0) return;
+        onAddProcess(processName.trim() || `P${processes.length + 1}`, sizeNum);
+        setProcessName(`P${processes.length + 2}`);
+        setProcessSize('');
+      };
+
+      return (
+        <aside className="w-full md:w-[320px] lg:w-[340px] shrink-0 h-full flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 select-none z-20 transition-colors">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md font-bold text-lg">
+                <IconCpu className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">Memory Allocator</h1>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Kontrol Input & Simulasi</p>
+              </div>
+            </div>
+
+            <button
+              onClick={onToggleTheme}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-sm"
+              title="Ganti Tema"
+            >
+              {theme === 'dark' ? <IconSun className="w-4 h-4 text-amber-400" /> : <IconMoon className="w-4 h-4 text-indigo-600" />}
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block mb-2">📖 Contoh Kasus / Preset</span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => onLoadPreset(idx)}
+                    className="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 truncate"
+                  >
+                    {preset.name.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300 uppercase">Total Kapasitas RAM</span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">{totalRamCapacity}</span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{totalRamCapacity > 0 ? 'KB' : '(Kosong)'}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={onResetToEmpty}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                >
+                  <IconRotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Reset Kosong</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-extrabold text-slate-900 dark:text-slate-100 mb-2 block">⚙️ Algoritma Alokasi</label>
+              <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                {[
+                  { id: 'first-fit', label: 'First Fit' },
+                  { id: 'best-fit', label: 'Best Fit' },
+                  { id: 'worst-fit', label: 'Worst Fit' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => onChangeAlgorithm(item.id)}
+                    className={`py-1.5 text-xs font-bold rounded-lg ${
+                      algorithm === item.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              <label className="text-xs font-extrabold text-slate-900 dark:text-slate-100 flex items-center justify-between">
+                <span>📦 Blok Memori (Holes)</span>
+                <span className="font-mono text-slate-500 dark:text-slate-400 text-[11px] font-bold">({holes.length})</span>
+              </label>
+
+              <form onSubmit={handleCreateHole} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nama Blok"
+                  value={holeName}
+                  onChange={(e) => setHoleName(e.target.value)}
+                  className="w-2/5 px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  placeholder="KB"
+                  min="1"
+                  value={holeSize}
+                  onChange={(e) => setHoleSize(e.target.value)}
+                  className="w-2/5 px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button type="submit" className="w-1/5 flex items-center justify-center rounded-xl bg-blue-600 text-white font-bold">
+                  <IconPlus className="w-4 h-4" />
+                </button>
+              </form>
+
+              {holes.length === 0 ? (
+                <div className="p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                  Belum ada blok memori. Masukkan nama & kapasitas KB di atas.
+                </div>
+              ) : (
+                <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                  {holes.map((hole) => (
+                    <div key={hole.id} className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white">{hole.name}</span>
+                        <span className="font-mono text-blue-600 dark:text-blue-400 font-extrabold text-[11px]">{hole.size} KB</span>
+                      </div>
+                      <button onClick={() => onDeleteHole(hole.id)} className="text-slate-400 hover:text-rose-600 font-bold p-1">
+                        <IconTrash className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2.5">
+              <label className="text-xs font-extrabold text-slate-900 dark:text-slate-100 flex items-center justify-between">
+                <span>🔄 Antrean Proses</span>
+                <span className="font-mono text-slate-500 dark:text-slate-400 text-[11px] font-bold">({processes.length})</span>
+              </label>
+
+              <form onSubmit={handleCreateProcess} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nama"
+                  value={processName}
+                  onChange={(e) => setProcessName(e.target.value)}
+                  className="w-2/5 px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  placeholder="KB"
+                  min="1"
+                  value={processSize}
+                  onChange={(e) => setProcessSize(e.target.value)}
+                  className="w-2/5 px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button type="submit" className="w-1/5 flex items-center justify-center rounded-xl bg-blue-600 text-white font-bold">
+                  <IconPlus className="w-4 h-4" />
+                </button>
+              </form>
+
+              {processes.length === 0 ? (
+                <div className="p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                  Belum ada proses. Masukkan nama & ukuran KB di atas.
+                </div>
+              ) : (
+                <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                  {processes.map((proc, index) => {
+                    const palette = proc.color || PROCESS_PALETTES[index % PROCESS_PALETTES.length];
+                    return (
+                      <div key={proc.id} className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full bg-gradient-to-r ${palette}`} />
+                          <span className="font-bold text-slate-900 dark:text-white">{proc.name}</span>
+                          <span className="font-mono text-emerald-700 dark:text-emerald-400 font-extrabold text-[11px]">{proc.size} KB</span>
+                        </div>
+                        <button onClick={() => onDeleteProcess(proc.id)} className="text-slate-400 hover:text-rose-600 font-bold p-1">
+                          <IconTrash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+            {failedCount > 0 ? (
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-rose-100 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-300">
+                <span className="text-xs font-black flex items-center gap-1">
+                  <IconAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                  {failedCount} Process Failed
+                </span>
+                <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-rose-200 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200">Perlu Cek</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300">
+                <span className="text-xs font-black flex items-center gap-1">
+                  <IconCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  {holes.length === 0 ? 'Siap Input' : 'Semua Terisi / Siap'}
+                </span>
+                <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200">Optimal</span>
+              </div>
+            )}
+          </div>
+        </aside>
+      );
+    }
+
+    // Component: MainCanvas
+    function MainCanvas({
+      theme,
+      viewMode,
+      onChangeViewMode,
+      algorithm,
+      currentStep,
+      currentStepIndex,
+      totalSteps,
+      isPlaying,
+      onTogglePlay,
+      onStepForward,
+      onStepBackward,
+      onJumpToStep,
+      playbackSpeed,
+      onChangeSpeed,
+      compareResults,
+      holes,
+      processes,
+      onBackToHome,
+      onLoadPresetDefault,
+    }) {
+      const [isFailedPanelMinimized, setIsFailedPanelMinimized] = useState(false);
+      const [isTourOpen, setIsTourOpen] = useState(false);
+      const metrics = currentStep.metrics;
+      const failedProcesses = currentStep.failedProcesses;
+
+      const algoLabels = {
+        'first-fit': 'First Fit',
+        'best-fit': 'Best Fit',
+        'worst-fit': 'Worst Fit',
+      };
+
+      const handleDownloadPDF = () => {
+        if (viewMode === 'compare') {
+          exportComparePDF(compareResults, holes, processes);
+        } else {
+          exportSinglePDF(algorithm, currentStep, holes, processes);
+        }
+      };
+
+      return (
+        <main className="flex-1 h-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white relative">
+          <TourModal isOpen={isTourOpen} onClose={() => setIsTourOpen(false)} />
+
+          <header className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 z-20 shadow-xs">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onBackToHome}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+              >
+                <IconArrowLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Kembali ke Beranda</span>
+              </button>
+              <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+              <div>
+                <h2 className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+                  Memory Allocation Simulator
+                </h2>
+                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hidden md:block">Visualisasi Alokasi Memori Dinamis</p>
+              </div>
+            </div>
+
+            <div className="flex items-center flex-wrap gap-2.5">
+              <button
+                onClick={() => setIsTourOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
+              >
+                <IconHelp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span className="hidden md:inline">Panduan</span>
+              </button>
+
+              <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <button
+                  onClick={() => onChangeViewMode('tab')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl ${
+                    viewMode === 'tab' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  Tab View ({algoLabels[algorithm]})
+                </button>
+                <button
+                  onClick={() => onChangeViewMode('compare')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl flex items-center gap-1 ${
+                    viewMode === 'compare' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  <IconSparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Compare View</span>
+                </button>
+              </div>
+
+              <button
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-blue-600"
+              >
+                <IconDownload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span className="hidden sm:inline">Download Report (PDF)</span>
+              </button>
+
+              {viewMode === 'tab' && (
+                <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <button onClick={() => onJumpToStep(0)} disabled={currentStepIndex === 0} className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30">
+                    <IconSkipBack className="w-4 h-4" />
+                  </button>
+                  <button onClick={onStepBackward} disabled={currentStepIndex === 0} className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30">
+                    <IconChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button onClick={onTogglePlay} disabled={holes.length === 0} className="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center gap-1">
+                    {isPlaying ? <IconPause className="w-3.5 h-3.5" /> : <IconPlay className="w-3.5 h-3.5" />}
+                    <span>{isPlaying ? 'Pause' : 'Play'}</span>
+                  </button>
+                  <button onClick={onStepForward} disabled={currentStepIndex >= totalSteps - 1 || holes.length === 0} className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30">
+                    <IconChevronRight className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => onJumpToStep(totalSteps - 1)} disabled={currentStepIndex >= totalSteps - 1 || holes.length === 0} className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30">
+                    <IconSkipForward className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            {viewMode === 'compare' ? (
+              <CompareView results={compareResults} onExportPDF={handleDownloadPDF} />
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <span className="text-[11px] font-extrabold uppercase text-slate-600 dark:text-slate-400">Memori Terpakai</span>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">{metrics.usedPercentage}%</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{metrics.totalUsed} / {metrics.totalCapacity} KB</span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <span className="text-[11px] font-extrabold uppercase text-slate-600 dark:text-slate-400">Sisa Memori / Frag.</span>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">{metrics.totalFree}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300">KB Free</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-amber-700 dark:text-amber-300 mt-1">Frag. Internal: {metrics.internalFragmentation} KB</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <span className="text-[11px] font-extrabold uppercase text-slate-600 dark:text-slate-400">Efisiensi Alokasi</span>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{metrics.efficiencyPercentage}%</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Ratio</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 mt-1">{metrics.allocatedCount} dari {metrics.totalProcesses} aktif</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <span className="text-[11px] font-extrabold uppercase text-slate-600 dark:text-slate-400">Proses Gagal</span>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className={`text-2xl font-black font-mono ${metrics.failedCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-200'}`}>{metrics.failedCount}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Gagal</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mt-1">{metrics.failedCount === 0 ? '✓ Semua berhasil masuk' : `⚠️ ${metrics.failedCount} tidak muat`}</div>
+                  </div>
+                </div>
+
+                <ConveyorBelt processes={processes} currentStep={currentStep} />
+
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-xs">
+                  <div>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                      {holes.length === 0 ? 'Status Sistem' : `Langkah ${currentStep.stepNumber} (${algoLabels[algorithm]})`}
+                    </span>
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                      {holes.length === 0 ? 'Kapasitas RAM = 0 KB (Clean Initial State). Tambahkan Blok Memori (Hole) di Sidebar Kiri atau klik tombol muat contoh di bawah.' : currentStep.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl p-6 bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 min-h-[440px] flex flex-col shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-extrabold uppercase text-slate-900 dark:text-white">Visualisasi Blok Memori RAM</h2>
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono font-bold">{currentStep.holesState.length} Holes</span>
+                  </div>
+
+                  <div className="flex-1 flex items-end justify-center sm:justify-start gap-4 sm:gap-6 overflow-x-auto pb-4 pt-2 px-2">
+                    {holes.length === 0 ? (
+                      <div className="w-full h-64 flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3">
+                          <IconLayers className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
+                          Memori RAM Belum Diatur (Kondisi Awal Kosong)
+                        </h3>
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300 max-w-md mt-1.5 leading-relaxed">
+                          Kapasitas RAM saat ini <strong className="text-blue-600 dark:text-blue-400 font-mono">0 KB</strong>. Silakan tambahkan blok memori dan proses di Sidebar Kiri, atau muat contoh soal otomatis.
+                        </p>
+                        <button
+                          onClick={onLoadPresetDefault}
+                          className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition active:scale-95"
+                        >
+                          <IconSparkles className="w-4 h-4 text-amber-300" />
+                          <span>Muat Contoh Soal Otomatis (Silberschatz)</span>
+                        </button>
+                      </div>
+                    ) : (
+                      currentStep.holesState.map((hole) => (
+                        <VerticalProgressBar
+                          key={hole.id}
+                          hole={hole}
+                          isHighlighted={currentStep.targetHoleId === hole.id}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {failedProcesses.length > 0 && (
+            <div className={`absolute bottom-6 right-6 z-30 ${isFailedPanelMinimized ? 'w-auto' : 'w-80 sm:w-96'}`}>
+              <div className="bg-white/95 dark:bg-slate-900/95 border border-rose-300 dark:border-rose-800 rounded-3xl p-4 shadow-2xl text-slate-900 dark:text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <IconAlert className="w-4 h-4 text-rose-600" />
+                    <h4 className="text-xs font-bold text-rose-700 dark:text-rose-400">
+                      Proses Gagal Dialokasikan ({failedProcesses.length})
+                    </h4>
+                  </div>
+                  <button onClick={() => setIsFailedPanelMinimized(!isFailedPanelMinimized)} className="text-xs text-slate-400 font-bold p-1">
+                    {isFailedPanelMinimized ? '➕' : '➖'}
+                  </button>
+                </div>
+                {!isFailedPanelMinimized && (
+                  <div className="mt-3 space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {failedProcesses.map((p) => (
+                      <div key={p.id} className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center justify-between text-xs">
+                        <span className="font-bold text-rose-900 dark:text-rose-200">Proses {p.name} ({p.size} KB)</span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-rose-200 text-rose-900">Tidak Muat</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+      );
+    }
+
+    // Component: LandingPage
+    function LandingPage({ onStart, theme, onToggleTheme, onLoadPresetAndStart }) {
+      return (
+        <div className="w-screen h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white relative overflow-hidden flex flex-col justify-between p-6 sm:p-10 md:p-14 select-none transition-colors duration-200">
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div className="absolute -top-32 -left-20 w-[550px] h-[550px] rounded-full bg-gradient-to-tr from-cyan-400/20 via-blue-500/20 to-indigo-500/15 blur-[120px] dark:blur-[140px] animate-pulse-slow" />
+            <div className="absolute top-1/3 -right-24 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-indigo-400/15 via-purple-500/20 to-blue-400/10 blur-[130px] dark:blur-[150px] animate-float-slow" />
+            <div className="absolute -bottom-36 left-1/4 w-[750px] h-[450px] rounded-full bg-gradient-to-r from-blue-500/15 via-cyan-400/20 to-emerald-400/15 blur-[120px] dark:blur-[140px] animate-pulse-slow" style={{ animationDelay: '3s' }} />
+          </div>
+
+          <div className="relative z-20 flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 shadow-xs backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+              <span className="text-blue-600 dark:text-blue-400 font-extrabold">Sistem Operasi</span>
+              <span className="text-slate-400">•</span>
+              <span>Semester 3</span>
+              <span className="text-slate-400">•</span>
+              <span className="text-slate-600 dark:text-slate-400 font-mono">Universitas Siliwangi</span>
+            </div>
+
+            <button
+              onClick={onToggleTheme}
+              className="p-2.5 rounded-2xl bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 transition shadow-sm"
+              title="Ganti Tema"
+            >
+              {theme === 'dark' ? <IconSun className="w-4 h-4 text-amber-400" /> : <IconMoon className="w-4 h-4 text-indigo-600" />}
+            </button>
+          </div>
+
+          <header className="relative z-10 max-w-3xl mt-4">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+              Memory Allocation <br />
+              <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 dark:from-blue-400 dark:via-cyan-400 dark:to-indigo-300 bg-clip-text text-transparent">
+                Simulator
+              </span>
+            </h1>
+
+            <p className="mt-4 text-sm sm:text-base md:text-lg text-slate-700 dark:text-slate-300 leading-relaxed max-w-2xl font-medium">
+              Simulasi interaktif grafis untuk mempelajari algoritma alokasi memori dinamis:{' '}
+              <strong className="text-slate-900 dark:text-white font-extrabold">First Fit</strong>,{' '}
+              <strong className="text-slate-900 dark:text-white font-extrabold">Best Fit</strong>, dan{' '}
+              <strong className="text-slate-900 dark:text-white font-extrabold">Worst Fit</strong>. Analisis fragmentasi internal, efisiensi RAM, dan ekspor laporan PDF komparatif.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <button
+                onClick={onStart}
+                className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-blue-500/25 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+              >
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <IconPlay className="w-4 h-4 text-white" />
+                </div>
+                <span>Mulai Simulasi (Data Bersih)</span>
+                <IconArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={onLoadPresetAndStart}
+                className="flex items-center gap-2 px-5 py-4 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-sm border border-slate-200 dark:border-slate-800 shadow-sm transition"
+              >
+                <IconSparkles className="w-4 h-4 text-amber-500" />
+                <span>Buka dengan Contoh Soal Langsung</span>
+              </button>
+            </div>
+          </header>
+
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3.5 my-6 max-w-5xl">
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center gap-2 mb-2 font-bold text-sm text-slate-900 dark:text-white">
+                <span className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center text-xs font-bold">01</span>
+                <span>First Fit</span>
+              </div>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Menempati blok kosong pertama yang muat. Cepat dalam alokasi, meninggalkan sisa di awal memori.</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center gap-2 mb-2 font-bold text-sm text-slate-900 dark:text-white">
+                <span className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 flex items-center justify-center text-xs font-bold">02</span>
+                <span>Best Fit</span>
+              </div>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Menempati blok kosong terkecil yang muat guna meminimalkan sisa fragmentasi internal.</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center gap-2 mb-2 font-bold text-sm text-slate-900 dark:text-white">
+                <span className="w-6 h-6 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center justify-center text-xs font-bold">03</span>
+                <span>Worst Fit</span>
+              </div>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Menempati blok kosong terbesar yang muat agar sisa ruang cukup besar untuk proses lain.</p>
+            </div>
+          </div>
+
+          <footer className="relative z-10 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-600 dark:text-slate-400 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <span>Universitas Siliwangi • Teknik Informatika</span>
+            <span>Clean State Memory • PDF Export Ready</span>
+          </footer>
+        </div>
+      );
+    }
+
+    // App Component
+    function App() {
+      const [screen, setScreen] = useState('landing');
+      const [theme, setTheme] = useState(() => localStorage.getItem('memory_simulator_theme') || 'dark');
+
+      useEffect(() => {
+        const root = document.documentElement;
+        if (theme === 'dark') {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+        localStorage.setItem('memory_simulator_theme', theme);
+      }, [theme]);
+
+      const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+
+      const [holes, setHoles] = useState([]);
+      const [processes, setProcesses] = useState([]);
+
+      const [algorithm, setAlgorithm] = useState('first-fit');
+      const [viewMode, setViewMode] = useState('tab');
+      const [currentStepIndex, setCurrentStepIndex] = useState(0);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [playbackSpeed, setPlaybackSpeed] = useState(1200);
+
+      const simulationSteps = useMemo(() => {
+        return generateAlgorithmSteps(algorithm, holes, processes);
+      }, [algorithm, holes, processes]);
+
+      useEffect(() => {
+        if (currentStepIndex >= simulationSteps.length) {
+          setCurrentStepIndex(Math.max(0, simulationSteps.length - 1));
+        }
+      }, [simulationSteps.length, currentStepIndex]);
+
+      const currentStep = useMemo(() => {
+        const safeIndex = Math.min(Math.max(0, currentStepIndex), simulationSteps.length - 1);
+        return simulationSteps[safeIndex] || simulationSteps[0];
+      }, [simulationSteps, currentStepIndex]);
+
+      const compareResults = useMemo(() => {
+        return simulateAllAlgorithms(holes, processes);
+      }, [holes, processes]);
+
+      const timerRef = useRef(null);
+
+      useEffect(() => {
+        if (isPlaying) {
+          timerRef.current = window.setInterval(() => {
+            setCurrentStepIndex((prev) => {
+              if (prev < simulationSteps.length - 1) {
+                return prev + 1;
+              } else {
+                setIsPlaying(false);
+                return prev;
+              }
+            });
+          }, playbackSpeed);
+        } else if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+
+        return () => {
+          if (timerRef.current) clearInterval(timerRef.current);
+        };
+      }, [isPlaying, playbackSpeed, simulationSteps.length]);
+
+      const handleStartSimulation = () => {
+        setHoles([]);
+        setProcesses([]);
+        setCurrentStepIndex(0);
+        setIsPlaying(false);
+        setScreen('simulator');
+      };
+
+      const handleLoadPresetAndStart = () => {
+        setHoles(PRESETS[0].holes);
+        setProcesses(PRESETS[0].processes);
+        setCurrentStepIndex(0);
+        setIsPlaying(false);
+        setScreen('simulator');
+      };
+
+      const handleBackToHome = () => {
+        setIsPlaying(false);
+        setScreen('landing');
+      };
+
+      const handleTogglePlay = () => {
+        if (holes.length === 0) return;
+        if (!isPlaying && currentStepIndex >= simulationSteps.length - 1) {
+          setCurrentStepIndex(0);
+          setIsPlaying(true);
+        } else {
+          setIsPlaying(prev => !prev);
+        }
+      };
+
+      const handleStepForward = () => {
+        if (holes.length === 0) return;
+        setIsPlaying(false);
+        setCurrentStepIndex(prev => Math.min(simulationSteps.length - 1, prev + 1));
+      };
+
+      const handleStepBackward = () => {
+        if (holes.length === 0) return;
+        setIsPlaying(false);
+        setCurrentStepIndex(prev => Math.max(0, prev - 1));
+      };
+
+      const handleJumpToStep = (index) => {
+        if (holes.length === 0) return;
+        setIsPlaying(false);
+        setCurrentStepIndex(Math.min(Math.max(0, index), simulationSteps.length - 1));
+      };
+
+      const handleAddHole = (name, size) => {
+        setIsPlaying(false);
+        const newHole = {
+          id: `h-${Date.now()}`,
+          name,
+          size,
+          allocatedProcess: null,
+          usedSize: 0,
+          remainingSize: size,
+        };
+        setHoles(prev => [...prev, newHole]);
+      };
+
+      const handleDeleteHole = (id) => {
+        setIsPlaying(false);
+        setHoles(prev => prev.filter(h => h.id !== id));
+      };
+
+      const handleAddProcess = (name, size) => {
+        setIsPlaying(false);
+        const color = PROCESS_PALETTES[processes.length % PROCESS_PALETTES.length];
+        const newProcess = {
+          id: `p-${Date.now()}`,
+          name,
+          size,
+          color,
+        };
+        setProcesses(prev => [...prev, newProcess]);
+      };
+
+      const handleDeleteProcess = (id) => {
+        setIsPlaying(false);
+        setProcesses(prev => prev.filter(p => p.id !== id));
+      };
+
+      const handleResetToEmpty = () => {
+        setIsPlaying(false);
+        setHoles([]);
+        setProcesses([]);
+        setCurrentStepIndex(0);
+      };
+
+      const handleLoadPreset = (index) => {
+        setIsPlaying(false);
+        if (PRESETS[index]) {
+          setHoles(PRESETS[index].holes);
+          setProcesses(PRESETS[index].processes);
+          setCurrentStepIndex(0);
+        }
+      };
+
+      const handleChangeAlgorithm = (algo) => {
+        setIsPlaying(false);
+        setAlgorithm(algo);
+        setCurrentStepIndex(0);
+      };
+
+      if (screen === 'landing') {
+        return (
+          <LandingPage
+            onStart={handleStartSimulation}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onLoadPresetAndStart={handleLoadPresetAndStart}
+          />
+        );
+      }
+
+      return (
+        <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
+          <Sidebar
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            holes={holes}
+            onAddHole={handleAddHole}
+            onDeleteHole={handleDeleteHole}
+            processes={processes}
+            onAddProcess={handleAddProcess}
+            onDeleteProcess={handleDeleteProcess}
+            algorithm={algorithm}
+            onChangeAlgorithm={handleChangeAlgorithm}
+            failedCount={currentStep.failedProcesses.length}
+            onResetToEmpty={handleResetToEmpty}
+            onLoadPreset={handleLoadPreset}
+          />
+
+          <MainCanvas
+            theme={theme}
+            viewMode={viewMode}
+            onChangeViewMode={setViewMode}
+            algorithm={algorithm}
+            currentStep={currentStep}
+            currentStepIndex={currentStepIndex}
+            totalSteps={simulationSteps.length}
+            isPlaying={isPlaying}
+            onTogglePlay={handleTogglePlay}
+            onStepForward={handleStepForward}
+            onStepBackward={handleStepBackward}
+            onJumpToStep={handleJumpToStep}
+            playbackSpeed={playbackSpeed}
+            onChangeSpeed={setPlaybackSpeed}
+            compareResults={compareResults}
+            holes={holes}
+            processes={processes}
+            onBackToHome={handleBackToHome}
+            onLoadPresetDefault={() => handleLoadPreset(0)}
+          />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
