@@ -1,24 +1,18 @@
-import type { Page } from "../types"
+import type { Page } from "../types";
 
 export function HeaderNav({
   currentPage,
   onNavigate,
 }: {
-  currentPage: Page
-  onNavigate: (page: Page) => void
+  currentPage: Page;
+  onNavigate: (page: Page) => void;
 }) {
   const isQuizActive =
-    currentPage === "setup" ||
-    currentPage === "quiz" ||
-    currentPage === "result"
+    currentPage === "setup" || currentPage === "quiz" || currentPage === "result";
 
   return (
     <header className="brand-header">
-      <button
-        type="button"
-        className="brand-logo"
-        onClick={() => onNavigate("home")}
-      >
+      <button type="button" className="brand-logo" onClick={() => onNavigate("home")}>
         <span className="brand-mark">P</span>
         <span className="brand-name">Memory Parking</span>
       </button>
@@ -61,5 +55,5 @@ export function HeaderNav({
         </button>
       </nav>
     </header>
-  )
+  );
 }

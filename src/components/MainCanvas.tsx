@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   AlgorithmType,
   AllocationResult,
@@ -7,15 +7,12 @@ import {
   Process,
   ThemeMode,
   ViewMode,
-} from '../types/memory';
-import { VerticalProgressBar } from './VerticalProgressBar';
-import { CompareView } from './CompareView';
-import { ConveyorBelt } from './ConveyorBelt';
-import { TourModal } from './TourModal';
-import {
-  exportSingleAlgorithmPDF,
-  exportComparisonReportPDF,
-} from '../utils/pdfExport';
+} from "../types/memory";
+import { VerticalProgressBar } from "./VerticalProgressBar";
+import { CompareView } from "./CompareView";
+import { ConveyorBelt } from "./ConveyorBelt";
+import { TourModal } from "./TourModal";
+import { exportSingleAlgorithmPDF, exportComparisonReportPDF } from "../utils/pdfExport";
 import {
   Play,
   Pause,
@@ -35,7 +32,7 @@ import {
   HelpCircle,
   ArrowLeft,
   Download,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface MainCanvasProps {
   theme: ThemeMode;
@@ -53,9 +50,9 @@ interface MainCanvasProps {
   playbackSpeed: number; // in ms
   onChangeSpeed: (speed: number) => void;
   compareResults: {
-    'first-fit': AllocationResult;
-    'best-fit': AllocationResult;
-    'worst-fit': AllocationResult;
+    "first-fit": AllocationResult;
+    "best-fit": AllocationResult;
+    "worst-fit": AllocationResult;
   };
   holes: Hole[];
   processes: Process[];
@@ -88,13 +85,13 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
   const failedProcesses = currentStep.failedProcesses;
 
   const algoLabels: Record<AlgorithmType, string> = {
-    'first-fit': 'First Fit',
-    'best-fit': 'Best Fit',
-    'worst-fit': 'Worst Fit',
+    "first-fit": "First Fit",
+    "best-fit": "Best Fit",
+    "worst-fit": "Worst Fit",
   };
 
   const handleDownloadPDF = () => {
-    if (viewMode === 'compare') {
+    if (viewMode === "compare") {
       exportComparisonReportPDF(compareResults, holes, processes);
     } else {
       exportSingleAlgorithmPDF(algorithm, currentStep, holes, processes);
@@ -146,21 +143,21 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
           {/* View Mode Switcher */}
           <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
             <button
-              onClick={() => onChangeViewMode('tab')}
+              onClick={() => onChangeViewMode("tab")}
               className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                viewMode === 'tab'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                viewMode === "tab"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               Tab View ({algoLabels[algorithm]})
             </button>
             <button
-              onClick={() => onChangeViewMode('compare')}
+              onClick={() => onChangeViewMode("compare")}
               className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 ${
-                viewMode === 'compare'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                viewMode === "compare"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                  : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
@@ -173,21 +170,19 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
             onClick={handleDownloadPDF}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition active:scale-95 shadow-xs"
             title={
-              viewMode === 'compare'
-                ? 'Download Laporan PDF Perbandingan 3 Algoritma'
+              viewMode === "compare"
+                ? "Download Laporan PDF Perbandingan 3 Algoritma"
                 : `Download Laporan PDF untuk ${algoLabels[algorithm]}`
             }
           >
             <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span className="hidden sm:inline">
-              {viewMode === 'compare'
-                ? 'Ekspor PDF (Komparasi)'
-                : 'Download Report (PDF)'}
+              {viewMode === "compare" ? "Ekspor PDF (Komparasi)" : "Download Report (PDF)"}
             </span>
           </button>
 
           {/* Playback Controls (Active in Tab View) */}
-          {viewMode === 'tab' && (
+          {viewMode === "tab" && (
             <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
               <button
                 onClick={() => onJumpToStep(0)}
@@ -210,7 +205,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               <button
                 onClick={onTogglePlay}
                 disabled={holes.length === 0}
-                title={isPlaying ? 'Jeda Simulasi' : 'Jalankan Simulasi'}
+                title={isPlaying ? "Jeda Simulasi" : "Jalankan Simulasi"}
                 className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shadow-md shadow-blue-500/20"
               >
                 {isPlaying ? (
@@ -250,7 +245,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
       {/* 2. BODY CONTENT */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        {viewMode === 'compare' ? (
+        {viewMode === "compare" ? (
           /* Compare View (3 Algorithms Side-by-Side) */
           <CompareView
             results={compareResults}
@@ -304,10 +299,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                   </span>
                 </div>
                 <div className="text-[11px] font-bold text-amber-700 dark:text-amber-300 mt-2">
-                  Fragmentasi Internal:{' '}
-                  <span className="font-mono font-black">
-                    {metrics.internalFragmentation} KB
-                  </span>
+                  Fragmentasi Internal:{" "}
+                  <span className="font-mono font-black">{metrics.internalFragmentation} KB</span>
                 </div>
               </div>
 
@@ -341,8 +334,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                   <AlertTriangle
                     className={`w-4 h-4 ${
                       metrics.failedCount > 0
-                        ? 'text-rose-600 dark:text-rose-400'
-                        : 'text-slate-400'
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-slate-400"
                     }`}
                   />
                 </div>
@@ -350,8 +343,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                   <span
                     className={`text-2xl font-black font-mono ${
                       metrics.failedCount > 0
-                        ? 'text-rose-600 dark:text-rose-400'
-                        : 'text-slate-800 dark:text-slate-200'
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-slate-800 dark:text-slate-200"
                     }`}
                   >
                     {metrics.failedCount}
@@ -363,8 +356,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mt-2">
                   {metrics.failedCount === 0
                     ? holes.length === 0
-                      ? 'Menunggu input data'
-                      : '✓ Semua berhasil masuk'
+                      ? "Menunggu input data"
+                      : "✓ Semua berhasil masuk"
                     : `⚠️ ${metrics.failedCount} proses kekurangan ruang`}
                 </div>
               </div>
@@ -378,20 +371,20 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
               <div className="flex items-center gap-3">
                 <div
                   className={`p-2 rounded-xl shrink-0 ${
-                    currentStep.action === 'allocated'
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                      : currentStep.action === 'failed'
-                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                      : currentStep.action === 'completed'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
-                      : 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200'
+                    currentStep.action === "allocated"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                      : currentStep.action === "failed"
+                        ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                        : currentStep.action === "completed"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                          : "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200"
                   }`}
                 >
-                  {currentStep.action === 'allocated' ? (
+                  {currentStep.action === "allocated" ? (
                     <Layers className="w-5 h-5" />
-                  ) : currentStep.action === 'failed' ? (
+                  ) : currentStep.action === "failed" ? (
                     <XCircle className="w-5 h-5" />
-                  ) : currentStep.action === 'completed' ? (
+                  ) : currentStep.action === "completed" ? (
                     <Sparkles className="w-5 h-5" />
                   ) : (
                     <HelpCircle className="w-5 h-5" />
@@ -400,12 +393,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                 <div>
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                     {holes.length === 0
-                      ? 'Status Sistem'
+                      ? "Status Sistem"
                       : `Langkah ${currentStep.stepNumber} (${algoLabels[algorithm]})`}
                   </span>
                   <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mt-0.5">
                     {holes.length === 0
-                      ? 'Kapasitas RAM = 0 KB (Clean Initial State). Tambahkan Blok Memori (Hole) di Sidebar Kiri.'
+                      ? "Kapasitas RAM = 0 KB (Clean Initial State). Tambahkan Blok Memori (Hole) di Sidebar Kiri."
                       : currentStep.description}
                   </p>
                 </div>
@@ -468,14 +461,12 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                       Memori RAM Belum Diatur (Kondisi Awal Kosong)
                     </h3>
                     <p className="text-xs font-medium text-slate-600 dark:text-slate-300 max-w-md mt-1.5 leading-relaxed">
-                      Kapasitas RAM saat ini{' '}
+                      Kapasitas RAM saat ini{" "}
                       <span className="font-mono font-extrabold text-blue-600 dark:text-blue-400">
                         0 KB
                       </span>
-                      . Silakan gunakan formulir pada{' '}
-                      <span className="font-bold text-slate-900 dark:text-white">
-                        Sidebar Kiri
-                      </span>{' '}
+                      . Silakan gunakan formulir pada{" "}
+                      <span className="font-bold text-slate-900 dark:text-white">Sidebar Kiri</span>{" "}
                       untuk menambahkan Blok Memori Awal (Hole) dan Antrean Proses.
                     </p>
                   </div>
@@ -499,7 +490,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
       {failedProcesses.length > 0 && (
         <div
           className={`absolute bottom-6 right-6 z-30 transition-all duration-300 ${
-            isFailedPanelMinimized ? 'w-auto' : 'w-80 sm:w-96'
+            isFailedPanelMinimized ? "w-auto" : "w-80 sm:w-96"
           }`}
         >
           <div className="backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 border border-rose-300 dark:border-rose-800 rounded-3xl p-4 shadow-2xl text-slate-900 dark:text-white">
@@ -526,10 +517,8 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
 
               {/* Minimize / Maximize button */}
               <button
-                onClick={() =>
-                  setIsFailedPanelMinimized(!isFailedPanelMinimized)
-                }
-                title={isFailedPanelMinimized ? 'Buka detail' : 'Kecilkan'}
+                onClick={() => setIsFailedPanelMinimized(!isFailedPanelMinimized)}
+                title={isFailedPanelMinimized ? "Buka detail" : "Kecilkan"}
                 className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg transition"
               >
                 {isFailedPanelMinimized ? (
@@ -554,7 +543,7 @@ export const MainCanvas: React.FC<MainCanvasProps> = ({
                         Proses {p.name}
                       </div>
                       <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
-                        Ukuran yang dibutuhkan:{' '}
+                        Ukuran yang dibutuhkan:{" "}
                         <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                           {p.size} KB
                         </span>

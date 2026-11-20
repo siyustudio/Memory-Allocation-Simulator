@@ -1,6 +1,6 @@
-import React from 'react';
-import { AllocationResult, Hole } from '../types/memory';
-import { VerticalProgressBar } from './VerticalProgressBar';
+import React from "react";
+import { AllocationResult, Hole } from "../types/memory";
+import { VerticalProgressBar } from "./VerticalProgressBar";
 import {
   Trophy,
   AlertTriangle,
@@ -10,57 +10,51 @@ import {
   Sparkles,
   Download,
   Layers,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface CompareViewProps {
   results: {
-    'first-fit': AllocationResult;
-    'best-fit': AllocationResult;
-    'worst-fit': AllocationResult;
+    "first-fit": AllocationResult;
+    "best-fit": AllocationResult;
+    "worst-fit": AllocationResult;
   };
   totalRamCapacity: number;
   onExportPDF: () => void;
 }
 
-export const CompareView: React.FC<CompareViewProps> = ({
-  results,
-  onExportPDF,
-}) => {
+export const CompareView: React.FC<CompareViewProps> = ({ results, onExportPDF }) => {
   const algos = [
     {
-      id: 'first-fit' as const,
-      name: 'First Fit',
-      subtitle: 'Alokasi ke blok pertama yang muat',
-      result: results['first-fit'],
+      id: "first-fit" as const,
+      name: "First Fit",
+      subtitle: "Alokasi ke blok pertama yang muat",
+      result: results["first-fit"],
     },
     {
-      id: 'best-fit' as const,
-      name: 'Best Fit',
-      subtitle: 'Alokasi ke blok terkecil yang muat',
-      result: results['best-fit'],
+      id: "best-fit" as const,
+      name: "Best Fit",
+      subtitle: "Alokasi ke blok terkecil yang muat",
+      result: results["best-fit"],
     },
     {
-      id: 'worst-fit' as const,
-      name: 'Worst Fit',
-      subtitle: 'Alokasi ke blok terbesar yang muat',
-      result: results['worst-fit'],
+      id: "worst-fit" as const,
+      name: "Worst Fit",
+      subtitle: "Alokasi ke blok terbesar yang muat",
+      result: results["worst-fit"],
     },
   ];
 
-  const hasHoles = results['first-fit'].finalHoles.length > 0;
+  const hasHoles = results["first-fit"].finalHoles.length > 0;
 
   // Find winner metrics (Lowest failed count, then lowest internal fragmentation)
   const minFailed = Math.min(...algos.map((a) => a.result.metrics.failedCount));
-  const candidateWinners = algos.filter(
-    (a) => a.result.metrics.failedCount === minFailed
-  );
+  const candidateWinners = algos.filter((a) => a.result.metrics.failedCount === minFailed);
   const minFragmentation = Math.min(
-    ...candidateWinners.map((a) => a.result.metrics.internalFragmentation)
+    ...candidateWinners.map((a) => a.result.metrics.internalFragmentation),
   );
   const winner =
-    candidateWinners.find(
-      (a) => a.result.metrics.internalFragmentation === minFragmentation
-    ) || algos[0];
+    candidateWinners.find((a) => a.result.metrics.internalFragmentation === minFragmentation) ||
+    algos[0];
 
   if (!hasHoles) {
     return (
@@ -72,7 +66,8 @@ export const CompareView: React.FC<CompareViewProps> = ({
           Data Memori Masih Kosong
         </h3>
         <p className="text-xs font-medium text-slate-600 dark:text-slate-300 max-w-md mt-1.5 leading-relaxed">
-          Tambahkan Blok Memori (Hole) dan Antrean Proses di Sidebar Kiri untuk melihat visualisasi dan perbandingan komparatif ketiga algoritma.
+          Tambahkan Blok Memori (Hole) dan Antrean Proses di Sidebar Kiri untuk melihat visualisasi
+          dan perbandingan komparatif ketiga algoritma.
         </p>
       </div>
     );
@@ -96,9 +91,7 @@ export const CompareView: React.FC<CompareViewProps> = ({
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-amber-50 dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-slate-700">
             <Trophy className="w-3.5 h-3.5 text-amber-500" />
             <span>Optimal:</span>
-            <span className="font-extrabold text-amber-700 dark:text-amber-400">
-              {winner.name}
-            </span>
+            <span className="font-extrabold text-amber-700 dark:text-amber-400">{winner.name}</span>
           </div>
 
           <button
@@ -124,17 +117,15 @@ export const CompareView: React.FC<CompareViewProps> = ({
               key={id}
               className={`flex flex-col rounded-3xl p-4 transition-all border ${
                 isWinner
-                  ? 'bg-white dark:bg-slate-800 border-2 border-blue-500 dark:border-blue-400 shadow-lg shadow-blue-500/10 ring-2 ring-blue-500/20'
-                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm'
+                  ? "bg-white dark:bg-slate-800 border-2 border-blue-500 dark:border-blue-400 shadow-lg shadow-blue-500/10 ring-2 ring-blue-500/20"
+                  : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm"
               }`}
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-black text-base text-slate-900 dark:text-white">
-                      {name}
-                    </h3>
+                    <h3 className="font-black text-base text-slate-900 dark:text-white">{name}</h3>
                     {isWinner && (
                       <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-black uppercase tracking-wider border border-amber-300 dark:border-amber-700">
                         <Trophy className="w-3 h-3" />
@@ -208,8 +199,8 @@ export const CompareView: React.FC<CompareViewProps> = ({
                     <span
                       className={`text-base font-black font-mono ${
                         result.failedProcesses.length > 0
-                          ? 'text-rose-600 dark:text-rose-400'
-                          : 'text-slate-600 dark:text-slate-400'
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-slate-600 dark:text-slate-400"
                       }`}
                     >
                       {result.failedProcesses.length}
