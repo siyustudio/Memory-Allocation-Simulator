@@ -1,10 +1,10 @@
-export type AlgorithmType = 'first-fit' | 'best-fit' | 'worst-fit';
+export type AlgorithmType = "first-fit" | "best-fit" | "worst-fit";
 
-export type ViewMode = 'tab' | 'compare';
+export type ViewMode = "tab" | "compare";
 
-export type ThemeMode = 'dark' | 'light';
+export type ThemeMode = "dark" | "light";
 
-export type ScreenMode = 'landing' | 'simulator';
+export type ScreenMode = "landing" | "simulator";
 
 export interface Process {
   id: string;
@@ -39,7 +39,7 @@ export interface MemoryMetrics {
 export interface ExecutionStep {
   stepNumber: number;
   process: Process | null;
-  action: 'start' | 'evaluate' | 'allocated' | 'failed' | 'completed';
+  action: "start" | "evaluate" | "allocated" | "failed" | "completed";
   targetHoleId?: string | null;
   description: string;
   holesState: Hole[];

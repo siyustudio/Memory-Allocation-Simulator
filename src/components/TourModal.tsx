@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   X,
   ChevronRight,
@@ -9,7 +9,7 @@ import {
   Play,
   FileText,
   Sparkles,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface TourModalProps {
   isOpen: boolean;
@@ -23,54 +23,73 @@ export const TourModal: React.FC<TourModalProps> = ({ isOpen, onClose }) => {
 
   const tourSteps = [
     {
-      title: 'Selamat Datang di Memory Allocation Simulator',
-      subtitle: 'Panduan Singkat Penggunaan Aplikasi',
+      title: "Selamat Datang di Memory Allocation Simulator",
+      subtitle: "Panduan Singkat Penggunaan Aplikasi",
       icon: <Sparkles className="w-8 h-8 text-blue-600 dark:text-blue-400" />,
       content: (
         <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-          Aplikasi ini dirancang untuk mensimulasikan algoritma alokasi memori komputer (*Contiguous Memory Allocation*) mata kuliah Sistem Operasi: <strong>First Fit</strong>, <strong>Best Fit</strong>, dan <strong>Worst Fit</strong>. Anda dapat melihat bagaimana proses menempati RAM dan menganalisis fragmentasi internal secara interaktif.
+          Aplikasi ini dirancang untuk mensimulasikan algoritma alokasi memori komputer (*Contiguous
+          Memory Allocation*) mata kuliah Sistem Operasi: <strong>First Fit</strong>,{" "}
+          <strong>Best Fit</strong>, dan <strong>Worst Fit</strong>. Anda dapat melihat bagaimana
+          proses menempati RAM dan menganalisis fragmentasi internal secara interaktif.
         </p>
       ),
     },
     {
-      title: '1. Input Blok Memori (Holes) & Proses',
-      subtitle: 'Kelola Data pada Sidebar Kiri',
+      title: "1. Input Blok Memori (Holes) & Proses",
+      subtitle: "Kelola Data pada Sidebar Kiri",
       icon: <Layers className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />,
       content: (
         <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-          Gunakan formulir pada sidebar sebelah kiri untuk menambahkan <strong>Blok Memori Awal (Hole)</strong> dan <strong>Antrean Proses</strong> dengan memasukkan nama dan ukuran dalam satuan KB. Anda juga dapat menggunakan tombol <strong>Preset</strong> untuk memuat contoh soal klasik Silberschatz secara instan.
+          Gunakan formulir pada sidebar sebelah kiri untuk menambahkan{" "}
+          <strong>Blok Memori Awal (Hole)</strong> dan <strong>Antrean Proses</strong> dengan
+          memasukkan nama dan ukuran dalam satuan KB. Anda juga dapat menggunakan tombol{" "}
+          <strong>Preset</strong> untuk memuat contoh soal klasik Silberschatz secara instan.
         </p>
       ),
     },
     {
-      title: '2. Pemilihan Algoritma Alokasi',
-      subtitle: 'First Fit vs Best Fit vs Worst Fit',
+      title: "2. Pemilihan Algoritma Alokasi",
+      subtitle: "First Fit vs Best Fit vs Worst Fit",
       icon: <Sliders className="w-8 h-8 text-cyan-600 dark:text-cyan-400" />,
       content: (
         <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
-          <p>• <strong>First Fit:</strong> Mengalokasikan proses ke blok kosong pertama yang muat.</p>
-          <p>• <strong>Best Fit:</strong> Mengalokasikan ke blok kosong terkecil yang muat (menekan fragmentasi internal).</p>
-          <p>• <strong>Worst Fit:</strong> Mengalokasikan ke blok kosong terbesar yang muat.</p>
+          <p>
+            • <strong>First Fit:</strong> Mengalokasikan proses ke blok kosong pertama yang muat.
+          </p>
+          <p>
+            • <strong>Best Fit:</strong> Mengalokasikan ke blok kosong terkecil yang muat (menekan
+            fragmentasi internal).
+          </p>
+          <p>
+            • <strong>Worst Fit:</strong> Mengalokasikan ke blok kosong terbesar yang muat.
+          </p>
         </div>
       ),
     },
     {
-      title: '3. Conveyor Belt & Playback Controller',
-      subtitle: 'Pantau Antrean Proses & Jalankan Langkah Demi Langkah',
+      title: "3. Conveyor Belt & Playback Controller",
+      subtitle: "Pantau Antrean Proses & Jalankan Langkah Demi Langkah",
       icon: <Play className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />,
       content: (
         <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-          Amati <strong>Conveyor Belt Antrean Proses</strong> di atas canvas untuk melihat paket proses yang sedang dievaluasi. Gunakan tombol <strong>Play/Pause</strong>, <strong>Step Forward/Back</strong>, dan slider kecepatan animasi untuk mengamati transisi pengisian memori langkah demi langkah.
+          Amati <strong>Conveyor Belt Antrean Proses</strong> di atas canvas untuk melihat paket
+          proses yang sedang dievaluasi. Gunakan tombol <strong>Play/Pause</strong>,{" "}
+          <strong>Step Forward/Back</strong>, dan slider kecepatan animasi untuk mengamati transisi
+          pengisian memori langkah demi langkah.
         </p>
       ),
     },
     {
-      title: '4. Compare View & Ekspor Laporan PDF',
-      subtitle: 'Bandingkan Performa & Unduh Hasil Pengujian',
+      title: "4. Compare View & Ekspor Laporan PDF",
+      subtitle: "Bandingkan Performa & Unduh Hasil Pengujian",
       icon: <FileText className="w-8 h-8 text-amber-600 dark:text-amber-400" />,
       content: (
         <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-          Gunakan tombol <strong>Compare View</strong> di header untuk melihat visualisasi perbandingan ketiga algoritma secara berdampingan. Anda dapat mengunduh laporan pengujian resmi dalam format <strong>PDF</strong> yang memuat tabel metrik lengkap dan evaluasi algoritma terbaik!
+          Gunakan tombol <strong>Compare View</strong> di header untuk melihat visualisasi
+          perbandingan ketiga algoritma secara berdampingan. Anda dapat mengunduh laporan pengujian
+          resmi dalam format <strong>PDF</strong> yang memuat tabel metrik lengkap dan evaluasi
+          algoritma terbaik!
         </p>
       ),
     },
@@ -138,8 +157,8 @@ export const TourModal: React.FC<TourModalProps> = ({ isOpen, onClose }) => {
                 onClick={() => setCurrentStep(idx)}
                 className={`h-2 rounded-full transition-all ${
                   idx === currentStep
-                    ? 'w-6 bg-blue-600 dark:bg-blue-500'
-                    : 'w-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400'
+                    ? "w-6 bg-blue-600 dark:bg-blue-500"
+                    : "w-2 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400"
                 }`}
                 title={`Langkah ${idx + 1}`}
               />
@@ -162,7 +181,7 @@ export const TourModal: React.FC<TourModalProps> = ({ isOpen, onClose }) => {
               onClick={handleNext}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-md shadow-blue-500/20 transition active:scale-95"
             >
-              <span>{currentStep === tourSteps.length - 1 ? 'Selesai' : 'Lanjut'}</span>
+              <span>{currentStep === tourSteps.length - 1 ? "Selesai" : "Lanjut"}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

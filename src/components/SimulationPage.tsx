@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react";
 import {
   algorithmLabels,
   defaultBlocks,
   defaultProcesses,
+  exampleBlocks,
+  exampleProcesses,
   generateSimulationSteps,
+  isConfigurationValid,
   simulateFixedPartition,
-} from "../simulationEngine"
-import type { Algorithm, MemoryBlock, MemoryProcess } from "../types"
-import { Car } from "./Car"
+} from "../simulationEngine";
+import type { Algorithm, MemoryBlock, MemoryProcess } from "../types";
+import { Car } from "./Car";
 
 export function SimulationPage({
   blocks,
@@ -16,229 +19,221 @@ export function SimulationPage({
   setProcesses,
   onGoComparison,
 }: {
-  blocks: MemoryBlock[]
-  setBlocks: (blocks: MemoryBlock[]) => void
-  processes: MemoryProcess[]
-  setProcesses: (processes: MemoryProcess[]) => void
-  onGoComparison: () => void
+  blocks: MemoryBlock[];
+  setBlocks: (blocks: MemoryBlock[]) => void;
+  processes: MemoryProcess[];
+  setProcesses: (processes: MemoryProcess[]) => void;
+  onGoComparison: () => void;
 }) {
-  const [algorithm, setAlgorithm] = useState<Algorithm>("first")
-  const [stepIndex, setStepIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [showEditor, setShowEditor] = useState(true)
+  const [algorithm, setAlgorithm] = useState<Algorithm>("first");
+  const [stepIndex, setStepIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showEditor, setShowEditor] = useState(true);
+  const isValid = isConfigurationValid(blocks, processes);
 
   const steps = useMemo(() => {
-    return generateSimulationSteps(blocks, processes, algorithm)
-  }, [blocks, processes, algorithm])
+    return generateSimulationSteps(blocks, processes, algorithm);
+  }, [blocks, processes, algorithm]);
 
   const fullRun = useMemo(() => {
-    return simulateFixedPartition(blocks, processes, algorithm)
-  }, [blocks, processes, algorithm])
+    return simulateFixedPartition(blocks, processes, algorithm);
+  }, [blocks, processes, algorithm]);
 
   const slotsDensityClass =
-    blocks.length >= 13
-      ? "slots-dense"
-      : blocks.length >= 6
-        ? "slots-compact"
-        : "slots-normal"
+    blocks.length >= 13 ? "slots-dense" : blocks.length >= 6 ? "slots-compact" : "slots-normal";
 
-  const gridCols = Math.min(Math.max(blocks.length, 1), 6)
+  const gridCols = Math.min(Math.max(blocks.length, 1), 6);
 
   const queueDensityClass =
     processes.length >= 8
       ? "queue-dense"
       : processes.length >= 5
         ? "queue-compact"
-        : "queue-normal"
+        : "queue-normal";
 
   // Keep stepIndex within valid bounds
-  const safeStepIndex = Math.min(stepIndex, steps.length - 1)
-  const currentStep = steps[safeStepIndex] || steps[0]
+  const safeStepIndex = Math.min(stepIndex, steps.length - 1);
+  const currentStep = steps[safeStepIndex] || steps[0];
 
   // Auto-play timer
   useEffect(() => {
-    if (!isPlaying) return
+    if (!isPlaying) return;
     if (safeStepIndex >= steps.length - 1) {
-      setIsPlaying(false)
-      return
+      setIsPlaying(false);
+      return;
     }
 
     const timer = setTimeout(() => {
       setStepIndex((prev) => {
-        const next = prev + 1
+        const next = prev + 1;
         if (next >= steps.length - 1) {
-          setIsPlaying(false)
+          setIsPlaying(false);
         }
-        return next
-      })
-    }, 1400)
+        return next;
+      });
+    }, 1400);
 
-    return () => clearTimeout(timer)
-  }, [isPlaying, safeStepIndex, steps.length])
+    return () => clearTimeout(timer);
+  }, [isPlaying, safeStepIndex, steps.length]);
 
   function handleStepForward() {
     if (safeStepIndex < steps.length - 1) {
-      setStepIndex((prev) => prev + 1)
+      setStepIndex((prev) => prev + 1);
     }
   }
 
   function handleStepBackward() {
     if (safeStepIndex > 0) {
-      setStepIndex((prev) => prev - 1)
+      setStepIndex((prev) => prev - 1);
     }
   }
 
   function handleReset() {
-    setIsPlaying(false)
-    setStepIndex(0)
+    setIsPlaying(false);
+    setStepIndex(0);
   }
 
   function handleRunAll() {
-    setIsPlaying(false)
-    setStepIndex(steps.length - 1)
+    setIsPlaying(false);
+    setStepIndex(steps.length - 1);
   }
 
   function handleTogglePlay() {
+    if (!isValid) return;
     if (safeStepIndex >= steps.length - 1) {
-      setStepIndex(0)
-      setIsPlaying(true)
+      setStepIndex(0);
+      setIsPlaying(true);
     } else {
-      setIsPlaying(!isPlaying)
+      setIsPlaying(!isPlaying);
     }
   }
 
   function handleAlgorithmChange(algo: Algorithm) {
-    setAlgorithm(algo)
-    setIsPlaying(false)
-    setStepIndex(0)
+    setAlgorithm(algo);
+    setIsPlaying(false);
+    setStepIndex(0);
   }
 
   // Block editor handlers
   function createNextBlock(index: number, existing: MemoryBlock[]): MemoryBlock {
-    const usedIds = new Set(existing.map((b) => b.id))
-    let letterIdx = index
-    let candidate =
-      letterIdx < 26 ? String.fromCharCode(65 + letterIdx) : `B${letterIdx + 1}`
+    const usedIds = new Set(existing.map((b) => b.id));
+    let letterIdx = index;
+    let candidate = letterIdx < 26 ? String.fromCharCode(65 + letterIdx) : `B${letterIdx + 1}`;
     while (usedIds.has(candidate)) {
-      letterIdx++
-      candidate =
-        letterIdx < 26
-          ? String.fromCharCode(65 + letterIdx)
-          : `B${letterIdx + 1}`
+      letterIdx++;
+      candidate = letterIdx < 26 ? String.fromCharCode(65 + letterIdx) : `B${letterIdx + 1}`;
     }
     return {
       id: candidate,
       name: `Block ${candidate}`,
-      capacity: 250,
-    }
+      capacity: null,
+    };
   }
 
   function handleAddBlock() {
-    const newBlock = createNextBlock(blocks.length, blocks)
-    setBlocks([...blocks, newBlock])
-    handleReset()
+    const newBlock = createNextBlock(blocks.length, blocks);
+    setBlocks([...blocks, newBlock]);
+    handleReset();
   }
 
   function handleBlockCountChange(rawValue: number) {
-    const target = Number.isNaN(rawValue)
-      ? 0
-      : Math.max(0, Math.min(30, Math.floor(rawValue)))
-    if (target === blocks.length) return
+    const target = Number.isNaN(rawValue) ? 0 : Math.max(0, Math.min(30, Math.floor(rawValue)));
+    if (target === blocks.length) return;
     if (target < blocks.length) {
-      setBlocks(blocks.slice(0, target))
+      setBlocks(blocks.slice(0, target));
     } else {
-      const nextBlocks = [...blocks]
+      const nextBlocks = [...blocks];
       while (nextBlocks.length < target) {
-        nextBlocks.push(createNextBlock(nextBlocks.length, nextBlocks))
+        nextBlocks.push(createNextBlock(nextBlocks.length, nextBlocks));
       }
-      setBlocks(nextBlocks)
+      setBlocks(nextBlocks);
     }
-    handleReset()
+    handleReset();
   }
 
   function handleDeleteBlock(id: string) {
-    setBlocks(blocks.filter((b) => b.id !== id))
-    handleReset()
+    setBlocks(blocks.filter((b) => b.id !== id));
+    handleReset();
   }
 
   function handleBlockNameChange(id: string, name: string) {
-    setBlocks(blocks.map((b) => (b.id === id ? { ...b, name } : b)))
-    handleReset()
+    setBlocks(blocks.map((b) => (b.id === id ? { ...b, name } : b)));
+    handleReset();
   }
 
-  function handleBlockCapacityChange(id: string, capacity: number) {
-    const safeCap = Math.max(10, capacity)
-    setBlocks(
-      blocks.map((b) => (b.id === id ? { ...b, capacity: safeCap } : b)),
-    )
-    handleReset()
+  function handleBlockCapacityChange(id: string, rawValue: string) {
+    const parsed = rawValue === "" ? null : Number(rawValue);
+    const safeCap = parsed !== null && Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    setBlocks(blocks.map((b) => (b.id === id ? { ...b, capacity: safeCap } : b)));
+    handleReset();
   }
 
   // Process editor handlers
-  function createNextProcess(
-    index: number,
-    existing: MemoryProcess[],
-  ): MemoryProcess {
-    const usedIds = new Set(existing.map((p) => p.id))
-    let num = index + 1
-    let candidate = `P${num}`
-    while (usedIds.has(candidate)) {
-      num++
-      candidate = `P${num}`
+  function createNextProcess(index: number, existing: MemoryProcess[]): MemoryProcess {
+    const usedIds = new Set(existing.map((p) => p.id));
+    const usedNames = new Set(existing.map((p) => p.name.trim().toUpperCase()));
+    let num = index + 1;
+    let candidate = `P${num}`;
+    while (usedIds.has(candidate) || usedNames.has(candidate.toUpperCase())) {
+      num++;
+      candidate = `P${num}`;
     }
     return {
       id: candidate,
       name: candidate,
-      size: 150,
+      size: null,
       colorIndex: (num - 1) % 8,
-    }
+    };
   }
 
   function handleAddProcess() {
-    const newProcess = createNextProcess(processes.length, processes)
-    setProcesses([...processes, newProcess])
-    handleReset()
+    const newProcess = createNextProcess(processes.length, processes);
+    setProcesses([...processes, newProcess]);
+    handleReset();
   }
 
   function handleProcessCountChange(rawValue: number) {
-    const target = Number.isNaN(rawValue)
-      ? 0
-      : Math.max(0, Math.min(30, Math.floor(rawValue)))
-    if (target === processes.length) return
+    const target = Number.isNaN(rawValue) ? 0 : Math.max(0, Math.min(30, Math.floor(rawValue)));
+    if (target === processes.length) return;
     if (target < processes.length) {
-      setProcesses(processes.slice(0, target))
+      setProcesses(processes.slice(0, target));
     } else {
-      const nextProcesses = [...processes]
+      const nextProcesses = [...processes];
       while (nextProcesses.length < target) {
-        nextProcesses.push(createNextProcess(nextProcesses.length, nextProcesses))
+        nextProcesses.push(createNextProcess(nextProcesses.length, nextProcesses));
       }
-      setProcesses(nextProcesses)
+      setProcesses(nextProcesses);
     }
-    handleReset()
+    handleReset();
   }
 
   function handleDeleteProcess(id: string) {
-    setProcesses(processes.filter((p) => p.id !== id))
-    handleReset()
+    setProcesses(processes.filter((p) => p.id !== id));
+    handleReset();
   }
 
   function handleProcessNameChange(id: string, name: string) {
-    setProcesses(processes.map((p) => (p.id === id ? { ...p, name } : p)))
-    handleReset()
+    setProcesses(processes.map((p) => (p.id === id ? { ...p, name } : p)));
+    handleReset();
   }
 
-  function handleProcessSizeChange(id: string, size: number) {
-    const safeSize = Math.max(10, size)
-    setProcesses(
-      processes.map((p) => (p.id === id ? { ...p, size: safeSize } : p)),
-    )
-    handleReset()
+  function handleProcessSizeChange(id: string, rawValue: string) {
+    const parsed = rawValue === "" ? null : Number(rawValue);
+    const safeSize = parsed !== null && Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    setProcesses(processes.map((p) => (p.id === id ? { ...p, size: safeSize } : p)));
+    handleReset();
   }
 
-  function handleResetToDefaults() {
-    setBlocks(defaultBlocks)
-    setProcesses(defaultProcesses)
-    handleReset()
+  function handleClearData() {
+    setBlocks(defaultBlocks.map((block) => ({ ...block })));
+    setProcesses(defaultProcesses.map((process) => ({ ...process })));
+    handleReset();
+  }
+
+  function handleApplyExample() {
+    setBlocks(exampleBlocks.map((block) => ({ ...block })));
+    setProcesses(exampleProcesses.map((process) => ({ ...process })));
+    handleReset();
   }
 
   return (
@@ -248,8 +243,8 @@ export function SimulationPage({
         <p className="eyebrow">SIMULATOR MEKANISME SISTEM OPERASI</p>
         <h1>Simulasi Memori Interaktif</h1>
         <p className="lead">
-          Atur kapasitas blok memori dan ukuran proses sesukamu. Amati bagaimana
-          algoritma mencari dan mengalokasikan slot parkir secara bertahap.
+          Atur kapasitas blok memori dan ukuran proses sesukamu. Amati bagaimana algoritma mencari
+          dan mengalokasikan slot parkir secara bertahap.
         </p>
       </div>
 
@@ -257,29 +252,28 @@ export function SimulationPage({
       <section className="sim-algo-section">
         <div className="section-header">
           <h2>Pilih Algoritma Alokasi</h2>
-          <p>
-            Setiap algoritma memiliki strategi berbeda dalam memilih blok memori
-            kosong.
-          </p>
+          <p>Setiap algoritma memiliki strategi berbeda dalam memilih blok memori kosong.</p>
         </div>
         <div className="algo-cards-grid">
-          {([
+          {(
             [
-              "first",
-              "First Fit",
-              "Memilih blok kosong pertama dari awal urutan yang kapasitasnya cukup.",
-            ],
-            [
-              "best",
-              "Best Fit",
-              "Memilih blok kosong terkecil yang cukup agar sisa ruang (fragmentasi) sesedikit mungkin.",
-            ],
-            [
-              "worst",
-              "Worst Fit",
-              "Memilih blok kosong terbesar yang cukup sehingga menyisakan ruang paling besar.",
-            ],
-          ] as const).map(([id, title, desc]) => (
+              [
+                "first",
+                "First Fit",
+                "Memilih blok kosong pertama dari awal urutan yang kapasitasnya cukup.",
+              ],
+              [
+                "best",
+                "Best Fit",
+                "Memilih blok kosong terkecil yang cukup agar sisa ruang (fragmentasi) sesedikit mungkin.",
+              ],
+              [
+                "worst",
+                "Worst Fit",
+                "Memilih blok kosong terbesar yang cukup sehingga menyisakan ruang paling besar.",
+              ],
+            ] as const
+          ).map(([id, title, desc]) => (
             <button
               key={id}
               type="button"
@@ -291,9 +285,7 @@ export function SimulationPage({
                 <strong>{title}</strong>
                 <p>{desc}</p>
               </div>
-              <span className="algo-check">
-                {algorithm === id ? "✓ Aktif" : "Pilih"}
-              </span>
+              <span className="algo-check">{algorithm === id ? "✓ Aktif" : "Pilih"}</span>
             </button>
           ))}
         </div>
@@ -305,17 +297,19 @@ export function SimulationPage({
           <div>
             <h2>Pengaturan Blok Memori & Proses</h2>
             <p>
-              Ubah ukuran, tambah, atau hapus item di bawah. Simulasi akan
-              menyesuaikan otomatis.
+              Ubah ukuran, tambah, atau hapus item di bawah. Simulasi akan menyesuaikan otomatis.
             </p>
           </div>
           <div className="config-actions">
+            <button type="button" className="secondary small-btn" onClick={handleApplyExample}>
+              Preset: Example Simulation
+            </button>
             <button
               type="button"
-              className="secondary small-btn"
-              onClick={handleResetToDefaults}
+              className="secondary small-btn clear-data-btn"
+              onClick={handleClearData}
             >
-              Gunakan Contoh Default
+              Clear Data
             </button>
             <button
               type="button"
@@ -344,16 +338,10 @@ export function SimulationPage({
                       min="0"
                       max="30"
                       value={blocks.length}
-                      onChange={(e) =>
-                        handleBlockCountChange(Number(e.target.value))
-                      }
+                      onChange={(e) => handleBlockCountChange(Number(e.target.value))}
                     />
                   </label>
-                  <button
-                    type="button"
-                    className="add-item-btn"
-                    onClick={handleAddBlock}
-                  >
+                  <button type="button" className="add-item-btn" onClick={handleAddBlock}>
                     + Tambah
                   </button>
                 </div>
@@ -370,24 +358,19 @@ export function SimulationPage({
                       type="text"
                       className="name-edit-input"
                       value={block.name}
-                      onChange={(e) =>
-                        handleBlockNameChange(block.id, e.target.value)
-                      }
+                      onChange={(e) => handleBlockNameChange(block.id, e.target.value)}
                       placeholder="Nama blok"
                       aria-label={`Nama ${block.id}`}
                     />
                     <div className="unit-input">
                       <input
                         type="number"
-                        min="10"
-                        step="10"
-                        value={block.capacity}
-                        onChange={(e) =>
-                          handleBlockCapacityChange(
-                            block.id,
-                            Number(e.target.value),
-                          )
-                        }
+                        min="1"
+                        step="1"
+                        value={block.capacity ?? ""}
+                        placeholder="Masukkan kapasitas..."
+                        aria-label={`Kapasitas ${block.name}`}
+                        onChange={(e) => handleBlockCapacityChange(block.id, e.target.value)}
                       />
                       <span className="unit">KB</span>
                     </div>
@@ -419,16 +402,10 @@ export function SimulationPage({
                       min="0"
                       max="30"
                       value={processes.length}
-                      onChange={(e) =>
-                        handleProcessCountChange(Number(e.target.value))
-                      }
+                      onChange={(e) => handleProcessCountChange(Number(e.target.value))}
                     />
                   </label>
-                  <button
-                    type="button"
-                    className="add-item-btn"
-                    onClick={handleAddProcess}
-                  >
+                  <button type="button" className="add-item-btn" onClick={handleAddProcess}>
                     + Tambah
                   </button>
                 </div>
@@ -442,14 +419,11 @@ export function SimulationPage({
                 {processes.map((p, idx) => (
                   <div key={p.id} className="input-row">
                     <div className="process-tag">
-                      <Car index={p.colorIndex ?? idx} small />
                       <input
                         type="text"
                         className="name-edit-input"
                         value={p.name}
-                        onChange={(e) =>
-                          handleProcessNameChange(p.id, e.target.value)
-                        }
+                        onChange={(e) => handleProcessNameChange(p.id, e.target.value)}
                         placeholder="Nama proses"
                         aria-label={`Nama ${p.id}`}
                       />
@@ -457,12 +431,12 @@ export function SimulationPage({
                     <div className="unit-input">
                       <input
                         type="number"
-                        min="10"
-                        step="10"
-                        value={p.size}
-                        onChange={(e) =>
-                          handleProcessSizeChange(p.id, Number(e.target.value))
-                        }
+                        min="1"
+                        step="1"
+                        value={p.size ?? ""}
+                        placeholder="Masukkan kebutuhan..."
+                        aria-label={`Kebutuhan memori ${p.name}`}
+                        onChange={(e) => handleProcessSizeChange(p.id, e.target.value)}
                       />
                       <span className="unit">KB</span>
                     </div>
@@ -481,6 +455,16 @@ export function SimulationPage({
           </div>
         )}
       </section>
+
+      {!isValid && (
+        <div className="simulation-validation" role="alert">
+          <strong>Data simulasi belum lengkap.</strong>
+          <span>
+            Isi seluruh kapasitas Block dan kebutuhan memori Process dengan angka lebih dari 0 KB,
+            atau gunakan preset Example Simulation.
+          </span>
+        </div>
+      )}
 
       {/* Step Controls Bar */}
       <section className="sim-controls-bar">
@@ -510,6 +494,7 @@ export function SimulationPage({
           <button
             type="button"
             className={`primary control-btn ${isPlaying ? "coral" : ""}`}
+            disabled={!isValid}
             onClick={handleTogglePlay}
           >
             {isPlaying ? "⏸ Jeda" : "▶ Jalankan Otomatis"}
@@ -518,23 +503,20 @@ export function SimulationPage({
           <button
             type="button"
             className="secondary control-btn"
-            disabled={safeStepIndex >= steps.length - 1}
+            disabled={!isValid || safeStepIndex >= steps.length - 1}
             onClick={handleStepForward}
           >
             Langkah Berikutnya →
           </button>
 
-          <button
-            type="button"
-            className="secondary control-btn reset-btn"
-            onClick={handleReset}
-          >
+          <button type="button" className="secondary control-btn reset-btn" onClick={handleReset}>
             Reset
           </button>
 
           <button
             type="button"
             className="text-btn jump-btn"
+            disabled={!isValid}
             onClick={handleRunAll}
           >
             Langsung Selesai ⏩
@@ -557,8 +539,8 @@ export function SimulationPage({
           <div>
             <h2>Visualisasi Area Parkir Memori</h2>
             <p>
-              Biru: Kosong | Kuning: Sedang Diperiksa | Hijau: Berhasil Parkir |
-              Abu-abu: Terisi | Arsiran: Ruang Kosong / Fragmentasi
+              Biru: Kosong | Kuning: Sedang Diperiksa | Hijau: Berhasil Parkir | Abu-abu: Terisi |
+              Arsiran: Ruang Kosong / Fragmentasi
             </p>
           </div>
           <div className="color-legend">
@@ -574,8 +556,8 @@ export function SimulationPage({
           <div className="parking-empty-state">
             <strong>Tidak ada blok memori (0 Blok)</strong>
             <span>
-              Atur jumlah blok memori lebih dari 0 pada panel pengaturan untuk
-              menampilkan slot parkir.
+              Atur jumlah blok memori lebih dari 0 pada panel pengaturan untuk menampilkan slot
+              parkir.
             </span>
           </div>
         ) : (
@@ -584,25 +566,21 @@ export function SimulationPage({
             style={{ "--slot-cols": gridCols } as React.CSSProperties}
           >
             {blocks.map((block) => {
-              const allocation = currentStep.allocationsSoFar.find(
-                (a) => a.block.id === block.id,
-              )
-              const isChecking = currentStep.checkingBlockId === block.id
-              const isJustAllocated = currentStep.allocatedBlockId === block.id
+              const allocation = currentStep.allocationsSoFar.find((a) => a.block.id === block.id);
+              const isChecking = currentStep.checkingBlockId === block.id;
+              const isJustAllocated = currentStep.allocatedBlockId === block.id;
 
-              let slotClass = "slot-empty"
+              let slotClass = "slot-empty";
               if (allocation) {
-                slotClass = isJustAllocated
-                  ? "slot-just-allocated"
-                  : "slot-occupied"
+                slotClass = isJustAllocated ? "slot-just-allocated" : "slot-occupied";
               } else if (isChecking) {
-                slotClass = "slot-checking"
+                slotClass = "slot-checking";
               }
 
-              const displayBlockName = block.name.trim() || block.id
+              const displayBlockName = block.name.trim() || block.id;
               const displayProcessName = allocation
                 ? allocation.process.name.trim() || allocation.process.id
-                : ""
+                : "";
 
               return (
                 <div
@@ -612,9 +590,7 @@ export function SimulationPage({
                 >
                   <div className="slot-top-row">
                     <span className="slot-id-badge">{displayBlockName}</span>
-                    <span className="slot-capacity-badge">
-                      {block.capacity} KB
-                    </span>
+                    <span className="slot-capacity-badge">{block.capacity ?? "—"} KB</span>
                   </div>
 
                   <div className="slot-content-area">
@@ -641,19 +617,14 @@ export function SimulationPage({
                         <p>Memeriksa...</p>
                       </div>
                     ) : (
-                      <div
-                        className="slot-free-zone"
-                        title={`Free Space: ${block.capacity} KB`}
-                      >
+                      <div className="slot-free-zone" title={`Free Space: ${block.capacity} KB`}>
                         <span className="free-zone-badge">Free Space</span>
-                        <strong className="free-zone-size">
-                          {block.capacity} KB
-                        </strong>
+                        <strong className="free-zone-size">{block.capacity ?? "—"} KB</strong>
                       </div>
                     )}
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         )}
@@ -665,35 +636,29 @@ export function SimulationPage({
             <span>Fixed Partition Queue</span>
           </div>
           {processes.length === 0 ? (
-            <div className="queue-empty-state">
-              Antrean proses kosong (0 Proses).
-            </div>
+            <div className="queue-empty-state">Antrean proses kosong (0 Proses).</div>
           ) : (
             <div className="strip-items">
               {processes.map((p, idx) => {
-                const isAllocated = currentStep.allocationsSoFar.some(
-                  (a) => a.process.id === p.id,
-                )
-                const isFailed = currentStep.failedSoFar.some(
-                  (f) => f.id === p.id,
-                )
-                const isCurrent = currentStep.activeProcessIndex === idx
+                const isAllocated = currentStep.allocationsSoFar.some((a) => a.process.id === p.id);
+                const isFailed = currentStep.failedSoFar.some((f) => f.id === p.id);
+                const isCurrent = currentStep.activeProcessIndex === idx;
 
-                let badgeText = "Waiting"
-                let itemClass = "status-waiting"
+                let badgeText = "Waiting";
+                let itemClass = "status-waiting";
                 if (isAllocated) {
-                  badgeText = "Parked"
-                  itemClass = "status-parked"
+                  badgeText = "Parked";
+                  itemClass = "status-parked";
                 } else if (isFailed) {
-                  badgeText = "Failed"
-                  itemClass = "status-failed"
+                  badgeText = "Failed";
+                  itemClass = "status-failed";
                 } else if (isCurrent) {
-                  badgeText = "Allocating"
-                  itemClass = "status-active"
+                  badgeText = "Allocating";
+                  itemClass = "status-active";
                 }
 
-                const progressPct = isAllocated ? 100 : 0
-                const displayProcessName = p.name.trim() || p.id
+                const progressPct = isAllocated ? 100 : 0;
+                const displayProcessName = p.name.trim() || p.id;
 
                 return (
                   <div
@@ -703,17 +668,13 @@ export function SimulationPage({
                   >
                     <span className="queue-status-pill">{badgeText}</span>
                     <div className="queue-car-wrap">
-                      <Car
-                        index={p.colorIndex ?? idx}
-                        small
-                        label={displayProcessName}
-                      />
+                      <Car index={p.colorIndex ?? idx} small label={displayProcessName} />
                     </div>
                     <span className="queue-progress-meta">
-                      {progressPct}% • {p.size} KB
+                      {progressPct}% • {p.size ?? "—"} KB
                     </span>
                   </div>
-                )
+                );
               })}
             </div>
           )}
@@ -725,14 +686,13 @@ export function SimulationPage({
         <div className="summary-header">
           <div>
             <p className="eyebrow">RINGKASAN METRIK HASIL SIMULASI</p>
-            <h2>
-              Hasil Alokasi {algorithmLabels[algorithm]} (Fixed Partition)
-            </h2>
+            <h2>Hasil Alokasi {algorithmLabels[algorithm]} (Fixed Partition)</h2>
           </div>
           <button
             type="button"
             className="primary coral"
             onClick={onGoComparison}
+            disabled={!isValid}
           >
             Bandingkan Kinerja 3 Algoritma →
           </button>
@@ -747,37 +707,35 @@ export function SimulationPage({
 
           <div className="sim-stat-card stat-success">
             <span className="stat-label">Proses Berhasil</span>
-            <strong>{fullRun.metrics.successCount}</strong>
+            <strong>{isValid ? fullRun.metrics.successCount : "—"}</strong>
             <small>{fullRun.metrics.successRate}% tingkat alokasi</small>
           </div>
 
           <div className="sim-stat-card stat-fail">
             <span className="stat-label">Proses Gagal</span>
-            <strong>{fullRun.metrics.failCount}</strong>
+            <strong>{isValid ? fullRun.metrics.failCount : "—"}</strong>
             <small>Tidak ada blok yang muat</small>
           </div>
 
           <div className="sim-stat-card">
             <span className="stat-label">Blok Terpakai</span>
-            <strong>
-              {fullRun.metrics.blocksUsed} / {blocks.length}
-            </strong>
+            <strong>{isValid ? `${fullRun.metrics.blocksUsed} / ${blocks.length}` : "—"}</strong>
             <small>Partisi tetap terisi</small>
           </div>
 
           <div className="sim-stat-card stat-frag">
             <span className="stat-label">Internal Fragmentation</span>
-            <strong>{fullRun.metrics.totalInternalFrag} KB</strong>
+            <strong>{isValid ? `${fullRun.metrics.totalInternalFrag} KB` : "—"}</strong>
             <small>Total sisa ruang terbuang</small>
           </div>
 
           <div className="sim-stat-card stat-efficiency">
             <span className="stat-label">Efisiensi Memori</span>
-            <strong>{fullRun.metrics.efficiency}%</strong>
+            <strong>{isValid ? `${fullRun.metrics.efficiency}%` : "—"}</strong>
             <small>Memori proses / blok terpakai</small>
           </div>
         </div>
       </section>
     </div>
-  )
+  );
 }

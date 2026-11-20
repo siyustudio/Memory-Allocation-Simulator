@@ -1,11 +1,6 @@
-import React, { useState } from 'react';
-import {
-  AlgorithmType,
-  Hole,
-  Process,
-  ThemeMode,
-} from '../types/memory';
-import { PRESETS, PROCESS_PALETTES } from '../utils/algorithms';
+import React, { useState } from "react";
+import { AlgorithmType, Hole, Process, ThemeMode } from "../types/memory";
+import { PRESETS, PROCESS_PALETTES } from "../utils/algorithms";
 import {
   Sun,
   Moon,
@@ -18,7 +13,7 @@ import {
   Cpu,
   Sliders,
   BookOpen,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface SidebarProps {
   theme: ThemeMode;
@@ -53,10 +48,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   // Local state for forms
   const [holeName, setHoleName] = useState(`Blok ${holes.length + 1}`);
-  const [holeSize, setHoleSize] = useState('');
+  const [holeSize, setHoleSize] = useState("");
 
   const [processName, setProcessName] = useState(`P${processes.length + 1}`);
-  const [processSize, setProcessSize] = useState('');
+  const [processSize, setProcessSize] = useState("");
 
   const totalRamCapacity = holes.reduce((acc, h) => acc + h.size, 0);
 
@@ -67,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     onAddHole(holeName.trim() || `Blok ${holes.length + 1}`, sizeNum);
     setHoleName(`Blok ${holes.length + 2}`);
-    setHoleSize('');
+    setHoleSize("");
   };
 
   const handleCreateProcess = (e: React.FormEvent) => {
@@ -77,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     onAddProcess(processName.trim() || `P${processes.length + 1}`, sizeNum);
     setProcessName(`P${processes.length + 2}`);
-    setProcessSize('');
+    setProcessSize("");
   };
 
   return (
@@ -101,10 +96,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Theme Toggle Button */}
         <button
           onClick={onToggleTheme}
-          title={theme === 'dark' ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
+          title={theme === "dark" ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
           className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 transition-all hover:scale-105 active:scale-95 shadow-sm"
         >
-          {theme === 'dark' ? (
+          {theme === "dark" ? (
             <Sun className="w-4 h-4 text-amber-400" />
           ) : (
             <Moon className="w-4 h-4 text-indigo-600" />
@@ -130,7 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all text-center truncate shadow-xs"
                 title={preset.description}
               >
-                {preset.name.split(' ')[0]}
+                {preset.name.split(" ")[0]}
               </button>
             ))}
           </div>
@@ -145,10 +140,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
               <div className="flex items-baseline gap-1 mt-0.5">
                 <span className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">
-                  {totalRamCapacity > 0 ? totalRamCapacity : '0'}
+                  {totalRamCapacity > 0 ? totalRamCapacity : "0"}
                 </span>
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                  {totalRamCapacity > 0 ? 'KB' : '(Kosong)'}
+                  {totalRamCapacity > 0 ? "KB" : "(Kosong)"}
                 </span>
               </div>
             </div>
@@ -173,9 +168,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
             {(
               [
-                { id: 'first-fit', label: 'First Fit' },
-                { id: 'best-fit', label: 'Best Fit' },
-                { id: 'worst-fit', label: 'Worst Fit' },
+                { id: "first-fit", label: "First Fit" },
+                { id: "best-fit", label: "Best Fit" },
+                { id: "worst-fit", label: "Worst Fit" },
               ] as const
             ).map((item) => (
               <button
@@ -183,8 +178,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => onChangeAlgorithm(item.id)}
                 className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
                   algorithm === item.id
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                    : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 {item.label}
@@ -192,9 +187,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ))}
           </div>
           <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1.5 font-medium leading-tight">
-            {algorithm === 'first-fit' && '• Menempati blok kosong pertama yang muat.'}
-            {algorithm === 'best-fit' && '• Menempati blok terkecil yang muat (minimal sisa).'}
-            {algorithm === 'worst-fit' && '• Menempati blok terbesar yang muat (sisa terbesar).'}
+            {algorithm === "first-fit" && "• Menempati blok kosong pertama yang muat."}
+            {algorithm === "best-fit" && "• Menempati blok terkecil yang muat (minimal sisa)."}
+            {algorithm === "worst-fit" && "• Menempati blok terbesar yang muat (sisa terbesar)."}
           </p>
         </div>
 
@@ -319,8 +314,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ) : (
             <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
               {processes.map((proc, index) => {
-                const palette =
-                  proc.color || PROCESS_PALETTES[index % PROCESS_PALETTES.length];
+                const palette = proc.color || PROCESS_PALETTES[index % PROCESS_PALETTES.length];
                 return (
                   <div
                     key={proc.id}
@@ -371,7 +365,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span className="text-xs font-black tracking-tight">
-                {holes.length === 0 ? 'Siap Input' : 'Semua Terisi / Siap'}
+                {holes.length === 0 ? "Siap Input" : "Semua Terisi / Siap"}
               </span>
             </div>
             <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200">

@@ -1,6 +1,6 @@
-import { useMemo } from "react"
-import { compareAlgorithms } from "../simulationEngine"
-import type { MemoryBlock, MemoryProcess } from "../types"
+import { useMemo } from "react";
+import { compareAlgorithms, isConfigurationValid } from "../simulationEngine";
+import type { MemoryBlock, MemoryProcess } from "../types";
 
 export function ComparisonPage({
   blocks,
@@ -8,33 +8,34 @@ export function ComparisonPage({
   onGoSimulation,
   onGoQuiz,
 }: {
-  blocks: MemoryBlock[]
-  processes: MemoryProcess[]
-  onGoSimulation: () => void
-  onGoQuiz: () => void
+  blocks: MemoryBlock[];
+  processes: MemoryProcess[];
+  onGoSimulation: () => void;
+  onGoQuiz: () => void;
 }) {
+  const isValid = isConfigurationValid(blocks, processes);
   const comparison = useMemo(() => {
-    return compareAlgorithms(blocks, processes)
-  }, [blocks, processes])
+    return compareAlgorithms(blocks, processes);
+  }, [blocks, processes]);
 
-  const { first, best, worst } = comparison
+  const { first, best, worst } = comparison;
 
   // Determine winners
   const maxSuccess = Math.max(
     first.metrics.successCount,
     best.metrics.successCount,
     worst.metrics.successCount,
-  )
+  );
   const minFrag = Math.min(
     first.metrics.totalInternalFrag,
     best.metrics.totalInternalFrag,
     worst.metrics.totalInternalFrag,
-  )
+  );
   const maxEfficiency = Math.max(
     first.metrics.efficiency,
     best.metrics.efficiency,
     worst.metrics.efficiency,
-  )
+  );
 
   // Max fragmentation for chart bar percentage scaling
   const maxFragValue = Math.max(
@@ -42,7 +43,25 @@ export function ComparisonPage({
     first.metrics.totalInternalFrag,
     best.metrics.totalInternalFrag,
     worst.metrics.totalInternalFrag,
-  )
+  );
+
+  if (!isValid) {
+    return (
+      <div className="comparison-page">
+        <div className="comp-hero">
+          <p className="eyebrow">ANALISIS KOMPARASI SISTEM OPERASI</p>
+          <h1>Data Simulasi Belum Lengkap</h1>
+          <p className="lead">
+            Lengkapi seluruh kapasitas Block dan kebutuhan memori Process sebelum menjalankan
+            perbandingan algoritma.
+          </p>
+          <button type="button" className="primary" onClick={onGoSimulation}>
+            Kembali ke Pengaturan Simulasi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="comparison-page">
@@ -51,9 +70,8 @@ export function ComparisonPage({
         <p className="eyebrow">ANALISIS KOMPARASI SISTEM OPERASI</p>
         <h1>Perbandingan Kinerja Algoritma</h1>
         <p className="lead">
-          Evaluasi perbandingan langsung antara <b>First Fit</b>,{" "}
-          <b>Best Fit</b>, dan <b>Worst Fit</b> menggunakan konfigurasi blok
-          memori dan proses yang identik dalam model{" "}
+          Evaluasi perbandingan langsung antara <b>First Fit</b>, <b>Best Fit</b>, dan{" "}
+          <b>Worst Fit</b> menggunakan konfigurasi blok memori dan proses yang identik dalam model{" "}
           <i>Fixed Partition Allocation</i>.
         </p>
       </div>
@@ -64,15 +82,10 @@ export function ComparisonPage({
           <div>
             <h3>Konfigurasi Data Pengujian Saat Ini</h3>
             <p>
-              Data yang sama diuji pada ketiga algoritma agar hasil perbandingan
-              objektif dan adil.
+              Data yang sama diuji pada ketiga algoritma agar hasil perbandingan objektif dan adil.
             </p>
           </div>
-          <button
-            type="button"
-            className="secondary small-btn"
-            onClick={onGoSimulation}
-          >
+          <button type="button" className="secondary small-btn" onClick={onGoSimulation}>
             Ubah Data di Menu Simulasi ✎
           </button>
         </div>
@@ -88,9 +101,7 @@ export function ComparisonPage({
             </div>
           </div>
           <div className="pills-group">
-            <span className="pills-label">
-              Proses yang Diuji ({processes.length}):
-            </span>
+            <span className="pills-label">Proses yang Diuji ({processes.length}):</span>
             <div className="pills-row">
               {processes.map((p) => (
                 <span key={p.id} className="data-pill process-pill">
@@ -106,10 +117,7 @@ export function ComparisonPage({
       <section className="comp-table-section">
         <div className="section-title">
           <h2>Tabel Perbandingan Kinerja</h2>
-          <p>
-            Dihitung secara otomatis berdasarkan eksekusi nyata dari model
-            partisi tetap.
-          </p>
+          <p>Dihitung secara otomatis berdasarkan eksekusi nyata dari model partisi tetap.</p>
         </div>
 
         <div className="table-responsive">
@@ -137,44 +145,20 @@ export function ComparisonPage({
                   <strong>1. Jumlah Proses Berhasil</strong>
                   <small>Banyaknya proses yang mendapatkan slot memori</small>
                 </td>
-                <td
-                  className={
-                    first.metrics.successCount === maxSuccess
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text">
-                    {first.metrics.successCount} proses
-                  </span>
+                <td className={first.metrics.successCount === maxSuccess ? "highlight-best" : ""}>
+                  <span className="val-text">{first.metrics.successCount} proses</span>
                   {first.metrics.successCount === maxSuccess && (
                     <span className="badge-best">Terbaik ✓</span>
                   )}
                 </td>
-                <td
-                  className={
-                    best.metrics.successCount === maxSuccess
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text">
-                    {best.metrics.successCount} proses
-                  </span>
+                <td className={best.metrics.successCount === maxSuccess ? "highlight-best" : ""}>
+                  <span className="val-text">{best.metrics.successCount} proses</span>
                   {best.metrics.successCount === maxSuccess && (
                     <span className="badge-best">Terbaik ✓</span>
                   )}
                 </td>
-                <td
-                  className={
-                    worst.metrics.successCount === maxSuccess
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text">
-                    {worst.metrics.successCount} proses
-                  </span>
+                <td className={worst.metrics.successCount === maxSuccess ? "highlight-best" : ""}>
+                  <span className="val-text">{worst.metrics.successCount} proses</span>
                   {worst.metrics.successCount === maxSuccess && (
                     <span className="badge-best">Terbaik ✓</span>
                   )}
@@ -187,19 +171,13 @@ export function ComparisonPage({
                   <small>Proses yang tidak mendapatkan blok kosong cukup</small>
                 </td>
                 <td>
-                  <span className="val-text">
-                    {first.metrics.failCount} proses
-                  </span>
+                  <span className="val-text">{first.metrics.failCount} proses</span>
                 </td>
                 <td>
-                  <span className="val-text">
-                    {best.metrics.failCount} proses
-                  </span>
+                  <span className="val-text">{best.metrics.failCount} proses</span>
                 </td>
                 <td>
-                  <span className="val-text">
-                    {worst.metrics.failCount} proses
-                  </span>
+                  <span className="val-text">{worst.metrics.failCount} proses</span>
                 </td>
               </tr>
 
@@ -209,67 +187,35 @@ export function ComparisonPage({
                   <small>Akumulasi ukuran proses yang berhasil masuk</small>
                 </td>
                 <td>
-                  <span className="val-text">
-                    {first.metrics.totalAllocatedMem} KB
-                  </span>
+                  <span className="val-text">{first.metrics.totalAllocatedMem} KB</span>
                 </td>
                 <td>
-                  <span className="val-text">
-                    {best.metrics.totalAllocatedMem} KB
-                  </span>
+                  <span className="val-text">{best.metrics.totalAllocatedMem} KB</span>
                 </td>
                 <td>
-                  <span className="val-text">
-                    {worst.metrics.totalAllocatedMem} KB
-                  </span>
+                  <span className="val-text">{worst.metrics.totalAllocatedMem} KB</span>
                 </td>
               </tr>
 
               <tr>
                 <td>
                   <strong>4. Total Internal Fragmentation</strong>
-                  <small>
-                    Sisa kapasitas blok yang terbuang (makin kecil makin baik)
-                  </small>
+                  <small>Sisa kapasitas blok yang terbuang (makin kecil makin baik)</small>
                 </td>
-                <td
-                  className={
-                    first.metrics.totalInternalFrag === minFrag
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text">
-                    {first.metrics.totalInternalFrag} KB
-                  </span>
+                <td className={first.metrics.totalInternalFrag === minFrag ? "highlight-best" : ""}>
+                  <span className="val-text">{first.metrics.totalInternalFrag} KB</span>
                   {first.metrics.totalInternalFrag === minFrag && (
                     <span className="badge-best">Paling Minim ✓</span>
                   )}
                 </td>
-                <td
-                  className={
-                    best.metrics.totalInternalFrag === minFrag
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text">
-                    {best.metrics.totalInternalFrag} KB
-                  </span>
+                <td className={best.metrics.totalInternalFrag === minFrag ? "highlight-best" : ""}>
+                  <span className="val-text">{best.metrics.totalInternalFrag} KB</span>
                   {best.metrics.totalInternalFrag === minFrag && (
                     <span className="badge-best">Paling Minim ✓</span>
                   )}
                 </td>
-                <td
-                  className={
-                    worst.metrics.totalInternalFrag === minFrag
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text">
-                    {worst.metrics.totalInternalFrag} KB
-                  </span>
+                <td className={worst.metrics.totalInternalFrag === minFrag ? "highlight-best" : ""}>
+                  <span className="val-text">{worst.metrics.totalInternalFrag} KB</span>
                   {worst.metrics.totalInternalFrag === minFrag && (
                     <span className="badge-best">Paling Minim ✓</span>
                   )}
@@ -301,48 +247,22 @@ export function ComparisonPage({
               <tr>
                 <td>
                   <strong>6. Efisiensi Penggunaan Memori</strong>
-                  <small>
-                    (Memori Proses / Kapasitas Blok Terpakai) × 100%
-                  </small>
+                  <small>(Memori Proses / Kapasitas Blok Terpakai) × 100%</small>
                 </td>
-                <td
-                  className={
-                    first.metrics.efficiency === maxEfficiency
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text font-bold">
-                    {first.metrics.efficiency}%
-                  </span>
+                <td className={first.metrics.efficiency === maxEfficiency ? "highlight-best" : ""}>
+                  <span className="val-text font-bold">{first.metrics.efficiency}%</span>
                   {first.metrics.efficiency === maxEfficiency && (
                     <span className="badge-best">Tertinggi ✓</span>
                   )}
                 </td>
-                <td
-                  className={
-                    best.metrics.efficiency === maxEfficiency
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text font-bold">
-                    {best.metrics.efficiency}%
-                  </span>
+                <td className={best.metrics.efficiency === maxEfficiency ? "highlight-best" : ""}>
+                  <span className="val-text font-bold">{best.metrics.efficiency}%</span>
                   {best.metrics.efficiency === maxEfficiency && (
                     <span className="badge-best">Tertinggi ✓</span>
                   )}
                 </td>
-                <td
-                  className={
-                    worst.metrics.efficiency === maxEfficiency
-                      ? "highlight-best"
-                      : ""
-                  }
-                >
-                  <span className="val-text font-bold">
-                    {worst.metrics.efficiency}%
-                  </span>
+                <td className={worst.metrics.efficiency === maxEfficiency ? "highlight-best" : ""}>
+                  <span className="val-text font-bold">{worst.metrics.efficiency}%</span>
                   {worst.metrics.efficiency === maxEfficiency && (
                     <span className="badge-best">Tertinggi ✓</span>
                   )}
@@ -357,10 +277,7 @@ export function ComparisonPage({
       <section className="comp-charts-section">
         <div className="section-title">
           <h2>Grafik Batang Perbandingan Visual</h2>
-          <p>
-            Visualisasi perbandingan metrik utama untuk memudahkan analisis
-            kinerja.
-          </p>
+          <p>Visualisasi perbandingan metrik utama untuk memudahkan analisis kinerja.</p>
         </div>
 
         <div className="charts-grid">
@@ -379,9 +296,7 @@ export function ComparisonPage({
                     style={{ width: `${first.metrics.efficiency}%` }}
                   />
                 </div>
-                <strong className="bar-value">
-                  {first.metrics.efficiency}%
-                </strong>
+                <strong className="bar-value">{first.metrics.efficiency}%</strong>
               </div>
               <div className="bar-row">
                 <span className="bar-label">Best Fit</span>
@@ -391,9 +306,7 @@ export function ComparisonPage({
                     style={{ width: `${best.metrics.efficiency}%` }}
                   />
                 </div>
-                <strong className="bar-value">
-                  {best.metrics.efficiency}%
-                </strong>
+                <strong className="bar-value">{best.metrics.efficiency}%</strong>
               </div>
               <div className="bar-row">
                 <span className="bar-label">Worst Fit</span>
@@ -403,9 +316,7 @@ export function ComparisonPage({
                     style={{ width: `${worst.metrics.efficiency}%` }}
                   />
                 </div>
-                <strong className="bar-value">
-                  {worst.metrics.efficiency}%
-                </strong>
+                <strong className="bar-value">{worst.metrics.efficiency}%</strong>
               </div>
             </div>
           </div>
@@ -413,9 +324,7 @@ export function ComparisonPage({
           {/* Chart 2: Total Internal Fragmentation */}
           <div className="chart-card">
             <h3>Internal Fragmentation (KB)</h3>
-            <p className="chart-subtitle">
-              Semakin pendek batang grafik, semakin hemat memori
-            </p>
+            <p className="chart-subtitle">Semakin pendek batang grafik, semakin hemat memori</p>
             <div className="bar-group">
               <div className="bar-row">
                 <span className="bar-label">First Fit</span>
@@ -427,9 +336,7 @@ export function ComparisonPage({
                     }}
                   />
                 </div>
-                <strong className="bar-value">
-                  {first.metrics.totalInternalFrag} KB
-                </strong>
+                <strong className="bar-value">{first.metrics.totalInternalFrag} KB</strong>
               </div>
               <div className="bar-row">
                 <span className="bar-label">Best Fit</span>
@@ -441,9 +348,7 @@ export function ComparisonPage({
                     }}
                   />
                 </div>
-                <strong className="bar-value">
-                  {best.metrics.totalInternalFrag} KB
-                </strong>
+                <strong className="bar-value">{best.metrics.totalInternalFrag} KB</strong>
               </div>
               <div className="bar-row">
                 <span className="bar-label">Worst Fit</span>
@@ -455,9 +360,7 @@ export function ComparisonPage({
                     }}
                   />
                 </div>
-                <strong className="bar-value">
-                  {worst.metrics.totalInternalFrag} KB
-                </strong>
+                <strong className="bar-value">{worst.metrics.totalInternalFrag} KB</strong>
               </div>
             </div>
           </div>
@@ -469,28 +372,23 @@ export function ComparisonPage({
         <div className="analysis-icon">💡</div>
         <div>
           <h3>Kesimpulan & Analisis Teoretis Sistem Operasi</h3>
-          <p>
-            Berdasarkan simulasi Fixed Partition Allocation pada dataset ini:
-          </p>
+          <p>Berdasarkan simulasi Fixed Partition Allocation pada dataset ini:</p>
           <ul className="analysis-list">
             <li>
-              <b>Best Fit</b> cenderung menghasilkan fragmentasi internal paling
-              kecil ({best.metrics.totalInternalFrag} KB) dan efisiensi memori
-              tertinggi ({best.metrics.efficiency}%), karena selalu mencari blok
-              terkecil yang masih cukup.
+              <b>Best Fit</b> cenderung menghasilkan fragmentasi internal paling kecil (
+              {best.metrics.totalInternalFrag} KB) dan efisiensi memori tertinggi (
+              {best.metrics.efficiency}%), karena selalu mencari blok terkecil yang masih cukup.
             </li>
             <li>
-              <b>First Fit</b> bekerja dengan mencari blok kosong pertama tanpa
-              perlu memindai seluruh memori. Meskipun cepat, penempatan proses
-              dapat meninggalkan fragmentasi ({first.metrics.totalInternalFrag}{" "}
-              KB) tergantung urutan blok.
+              <b>First Fit</b> bekerja dengan mencari blok kosong pertama tanpa perlu memindai
+              seluruh memori. Meskipun cepat, penempatan proses dapat meninggalkan fragmentasi (
+              {first.metrics.totalInternalFrag} KB) tergantung urutan blok.
             </li>
             <li>
-              <b>Worst Fit</b> menempatkan proses ke dalam blok terbesar yang
-              tersedia ({worst.metrics.totalInternalFrag} KB fragmentasi
-              internal). Dalam model partisi tetap satu proses per blok,
-              strategi ini sering kali memboroskan blok besar untuk proses kecil
-              dan berpotensi menggagalkan proses berukuran besar berikutnya.
+              <b>Worst Fit</b> menempatkan proses ke dalam blok terbesar yang tersedia (
+              {worst.metrics.totalInternalFrag} KB fragmentasi internal). Dalam model partisi tetap
+              satu proses per blok, strategi ini sering kali memboroskan blok besar untuk proses
+              kecil dan berpotensi menggagalkan proses berukuran besar berikutnya.
             </li>
           </ul>
         </div>
@@ -506,5 +404,5 @@ export function ComparisonPage({
         </button>
       </div>
     </div>
-  )
+  );
 }

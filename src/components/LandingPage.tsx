@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Play,
   ArrowRight,
@@ -9,8 +9,8 @@ import {
   Sparkles,
   Sun,
   Moon,
-} from 'lucide-react';
-import { ThemeMode } from '../types/memory';
+} from "lucide-react";
+import { ThemeMode } from "../types/memory";
 
 interface LandingPageProps {
   onStart: () => void;
@@ -18,11 +18,7 @@ interface LandingPageProps {
   onToggleTheme: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({
-  onStart,
-  theme,
-  onToggleTheme,
-}) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStart, theme, onToggleTheme }) => {
   return (
     <div className="w-screen h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white relative overflow-hidden flex flex-col justify-between p-6 sm:p-10 md:p-14 select-none transition-colors duration-200">
       {/* 1. GLOWING AMBIENT GRADIENT WAVE BACKGROUND */}
@@ -36,7 +32,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Glowing Orb 3 (Bottom Center Ambient Wave) */}
         <div
           className="absolute -bottom-36 left-1/4 w-[750px] h-[450px] rounded-full bg-gradient-to-r from-blue-500/15 via-cyan-400/20 to-emerald-400/15 blur-[120px] dark:blur-[140px] animate-pulse-slow"
-          style={{ animationDelay: '3s' }}
+          style={{ animationDelay: "3s" }}
         />
 
         {/* Subtle dot matrix pattern */}
@@ -69,9 +65,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Semester & Subject Pill */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 shadow-xs backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-          <span className="text-blue-600 dark:text-blue-400 font-extrabold">
-            Sistem Operasi
-          </span>
+          <span className="text-blue-600 dark:text-blue-400 font-extrabold">Sistem Operasi</span>
           <span className="text-slate-400">•</span>
           <span>Semester 3</span>
           <span className="text-slate-400">•</span>
@@ -83,10 +77,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Theme Toggle Button */}
         <button
           onClick={onToggleTheme}
-          title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+          title={theme === "dark" ? "Mode Terang" : "Mode Gelap"}
           className="p-2.5 rounded-2xl bg-white hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 transition shadow-sm"
         >
-          {theme === 'dark' ? (
+          {theme === "dark" ? (
             <Sun className="w-4 h-4 text-amber-400" />
           ) : (
             <Moon className="w-4 h-4 text-indigo-600" />
@@ -106,19 +100,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Sub-deskripsi Ringkas */}
         <p className="mt-4 text-sm sm:text-base md:text-lg text-slate-700 dark:text-slate-300 leading-relaxed max-w-2xl font-medium">
-          Simulasi interaktif grafis untuk mempelajari algoritma alokasi memori dinamis:{' '}
-          <strong className="text-slate-900 dark:text-white font-extrabold">
-            First Fit
-          </strong>
-          ,{' '}
-          <strong className="text-slate-900 dark:text-white font-extrabold">
-            Best Fit
-          </strong>
-          , dan{' '}
-          <strong className="text-slate-900 dark:text-white font-extrabold">
-            Worst Fit
-          </strong>
-          . Analisis fragmentasi internal, efisiensi RAM, dan ekspor laporan PDF komparatif.
+          Simulasi interaktif grafis untuk mempelajari algoritma alokasi memori dinamis:{" "}
+          <strong className="text-slate-900 dark:text-white font-extrabold">First Fit</strong>,{" "}
+          <strong className="text-slate-900 dark:text-white font-extrabold">Best Fit</strong>, dan{" "}
+          <strong className="text-slate-900 dark:text-white font-extrabold">Worst Fit</strong>.
+          Analisis fragmentasi internal, efisiensi RAM, dan ekspor laporan PDF komparatif.
         </p>
 
         {/* Tombol Utama "Mulai" */}
@@ -153,7 +139,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h3>
           </div>
           <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-            Mengalokasikan proses ke blok kosong pertama yang muat. Cepat dan efisien dalam pencarian waktu, namun berpotensi meninggalkan fragmentasi di awal memori.
+            Mengalokasikan proses ke blok kosong pertama yang muat. Cepat dan efisien dalam
+            pencarian waktu, namun berpotensi meninggalkan fragmentasi di awal memori.
           </p>
         </div>
 
@@ -168,7 +155,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h3>
           </div>
           <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-            Mengalokasikan proses ke blok kosong dengan ukuran terkecil yang cukup. Menekan sisa ruang pada blok terpilih untuk meminimalkan fragmentasi internal.
+            Mengalokasikan proses ke blok kosong dengan ukuran terkecil yang cukup. Menekan sisa
+            ruang pada blok terpilih untuk meminimalkan fragmentasi internal.
           </p>
         </div>
 
@@ -183,7 +171,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h3>
           </div>
           <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-            Mengalokasikan proses ke blok kosong terbesar yang muat. Bertujuan meninggalkan sisa ruang yang cukup besar agar kelak dapat digunakan oleh proses lain.
+            Mengalokasikan proses ke blok kosong terbesar yang muat. Bertujuan meninggalkan sisa
+            ruang yang cukup besar agar kelak dapat digunakan oleh proses lain.
           </p>
         </div>
       </div>
