@@ -1,182 +1,34 @@
 import { useState } from "react"
+import { Car } from "./components/Car"
+import { ComparisonPage } from "./components/ComparisonPage"
+import { HeaderNav } from "./components/HeaderNav"
+import { SimulationPage } from "./components/SimulationPage"
+import {
+  algorithmLabels,
+  defaultBlocks,
+  defaultProcesses,
+  generateQuizQuestions,
+  buildExplanation,
+} from "./simulationEngine"
+import type {
+  Algorithm,
+  AnswerRecord,
+  Difficulty,
+  MemoryBlock,
+  MemoryProcess,
+  Page,
+  QuizItem,
+} from "./types"
 
-type Page = "home" | "learn" | "setup" | "quiz" | "result"
-type Algorithm = "first" | "best" | "worst"
-type Difficulty = "easy" | "medium" | "hard"
-
-export type QuizItem = {
-  id: number
-  processSize: number
-  blocks: number[] // exactly 4 block capacities: Slot A, Slot B, Slot C, Slot D
-  expected: number // index 0..3 of the correct block
-}
-
-export type AnswerRecord = {
-  questionIndex: number
-  processSize: number
-  blocks: number[]
-  choice: number // index 0..3 of user chosen block
-  expected: number // index 0..3 of correct block
-  correct: boolean
-  remainder: number // blocks[expected] - processSize
-}
-
-const COLORS = [
-  "#ef5d6c",
-  "#4f8edc",
-  "#f2b84b",
-  "#7b61c9",
-  "#38a887",
-  "#e779b1",
-]
-const algorithmNames: Record<Algorithm, string> = {
-  first: "First Fit",
-  best: "Best Fit",
-  worst: "Worst Fit",
-}
 const difficultyNames: Record<Difficulty, string> = {
   easy: "Mudah",
   medium: "Sedang",
   hard: "Sulit",
 }
 
-export function calculateExpected(
-  blocks: number[],
-  size: number,
-  algorithm: Algorithm,
-): number {
-  const candidates = blocks
-    .map((capacity, index) => ({ capacity, index }))
-    .filter(({ capacity }) => capacity >= size)
-
-  if (!candidates.length) return 0
-  if (algorithm === "first") return candidates[0].index
-  if (algorithm === "best") {
-    return candidates.reduce((best, curr) =>
-      curr.capacity < best.capacity ? curr : best,
-    ).index
-  }
-  return candidates.reduce((worst, curr) =>
-    curr.capacity > worst.capacity ? curr : worst,
-  ).index
-}
-
-export function generateQuizQuestions(
-  difficulty: Difficulty,
-  algorithm: Algorithm,
-): QuizItem[] {
-  const configs = {
-    easy: { processMin: 120, processMax: 300, step: 20 },
-    medium: { processMin: 100, processMax: 450, step: 10 },
-    hard: { processMin: 80, processMax: 600, step: 5 },
-  }[difficulty]
-
-  const questions: QuizItem[] = []
-
-  for (let q = 0; q < 5; q++) {
-    const pSize =
-      Math.floor(
-        Math.random() *
-          ((configs.processMax - configs.processMin) / configs.step),
-      ) *
-        configs.step +
-      configs.processMin
-
-    const used = new Set<number>()
-    const blocks: number[] = []
-
-    // 1-2 blocks smaller than pSize (insufficient capacity)
-    const smallCount = Math.random() > 0.5 ? 2 : 1
-    let attempts = 0
-    while (blocks.length < smallCount && attempts < 100) {
-      attempts++
-      const diff = (Math.floor(Math.random() * 5) + 1) * configs.step
-      const cap = Math.max(40, pSize - diff)
-      if (!used.has(cap) && cap < pSize) {
-        used.add(cap)
-        blocks.push(cap)
-      }
-    }
-
-    // 2-3 blocks larger than or equal to pSize (sufficient capacity)
-    attempts = 0
-    while (blocks.length < 4 && attempts < 100) {
-      attempts++
-      const diff = (Math.floor(Math.random() * 12) + 1) * configs.step
-      const cap = pSize + diff
-      if (!used.has(cap)) {
-        used.add(cap)
-        blocks.push(cap)
-      }
-    }
-
-    // Shuffle positions so correct answer varies among Slot A, B, C, D
-    for (let i = blocks.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[blocks[i], blocks[j]] = [blocks[j], blocks[i]]
-    }
-
-    const expected = calculateExpected(blocks, pSize, algorithm)
-    questions.push({
-      id: q,
-      processSize: pSize,
-      blocks,
-      expected,
-    })
-  }
-
-  return questions
-}
-
-export function buildExplanation(
-  blocks: number[],
-  processSize: number,
-  algorithm: Algorithm,
-  choice: number,
-  expected: number,
-) {
-  const correctLetter = String.fromCharCode(65 + expected)
-  const correctCap = blocks[expected]
-  const remainder = correctCap - processSize
-
-  const algoRule =
-    algorithm === "first"
-      ? `Algoritma First Fit menelusuri slot secara berurutan (A -> B -> C -> D) dan memilih slot pertama yang kapasitasnya mencukupi. Slot ${correctLetter} (${correctCap} KB) adalah slot pertama yang muat untuk proses ${processSize} KB.`
-      : algorithm === "best"
-        ? `Algoritma Best Fit mencari slot yang kapasitasnya mencukupi dengan sisa ruang paling kecil. Slot ${correctLetter} (${correctCap} KB) menyisakan ruang paling sedikit, yaitu ${remainder} KB.`
-        : `Algoritma Worst Fit mencari slot yang kapasitasnya mencukupi dengan sisa ruang paling besar. Slot ${correctLetter} (${correctCap} KB) menyisakan ruang paling banyak, yaitu ${remainder} KB.`
-
-  let userEvaluation = ""
-  if (choice !== expected) {
-    const userLetter = String.fromCharCode(65 + choice)
-    const userCap = blocks[choice]
-    if (userCap < processSize) {
-      userEvaluation = ` Kamu memilih Slot ${userLetter} (${userCap} KB), namun kapasitasnya tidak cukup untuk menampung proses berukuran ${processSize} KB.`
-    } else {
-      userEvaluation = ` Kamu memilih Slot ${userLetter} (${userCap} KB). Walaupun kapasitasnya cukup, aturan ${algorithmNames[algorithm]} menentukan bahwa Slot ${correctLetter} adalah pilihan yang lebih tepat.`
-    }
-  }
-
-  return `${algoRule}${userEvaluation}`
-}
-
-function Car({ index, small = false }: { index: number; small?: boolean }) {
-  return (
-    <div
-      className={`car ${small ? "car-small" : ""}`}
-      style={{ "--car": COLORS[index % COLORS.length] } as React.CSSProperties}
-    >
-      <span className="window" />
-      <span className="window" />
-      <span className="wheel left" />
-      <span className="wheel right" />
-    </div>
-  )
-}
-
 function Back({ onClick }: { onClick: () => void }) {
   return (
-    <button className="back" onClick={onClick}>
+    <button type="button" className="back" onClick={onClick}>
       ← Kembali
     </button>
   )
@@ -255,6 +107,12 @@ const lessons = [
 export default function App() {
   const [page, setPage] = useState<Page>("home")
   const [lesson, setLesson] = useState(0)
+
+  // Shared blocks and processes data for Simulation & Comparison
+  const [blocks, setBlocks] = useState<MemoryBlock[]>(defaultBlocks)
+  const [processes, setProcesses] = useState<MemoryProcess[]>(defaultProcesses)
+
+  // Quiz states
   const [algorithm, setAlgorithm] = useState<Algorithm>("first")
   const [difficulty, setDifficulty] = useState<Difficulty>("easy")
   const [questions, setQuestions] = useState<QuizItem[]>(() =>
@@ -272,7 +130,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  function start(newQuestion = false) {
+  function startQuiz(newQuestion = false) {
     if (newQuestion) {
       setQuestions(generateQuizQuestions(difficulty, algorithm))
     }
@@ -282,11 +140,11 @@ export default function App() {
     go("quiz")
   }
 
-  function choose(index: number) {
+  function chooseQuizOption(index: number) {
     setSelected(index)
   }
 
-  function submitAnswer() {
+  function submitQuizAnswer() {
     if (selected === undefined) return
     const q = questions[step]
     const choice = selected
@@ -315,20 +173,22 @@ export default function App() {
 
   return (
     <main>
-      <header className="brand">
-        <span className="brand-mark">P</span>
-        <span>Memory Parking</span>
-      </header>
+      <HeaderNav currentPage={page} onNavigate={go} />
 
+      {/* 1. HOME / BERANDA */}
       {page === "home" && (
         <section className="home">
           <div className="hero-copy">
-            <p className="eyebrow">BELAJAR SISTEM OPERASI JADI SERU</p>
+            <p className="eyebrow">APLIKASI SIMULASI SISTEM OPERASI</p>
             <h1>Belajar Memori, Yuk Parkirkan Mobil!</h1>
             <p className="lead">
               Pahami cara komputer mengatur memori lewat permainan parkir mobil.
+              Eksplorasi materi belajar, jalankan simulasi alokasi langkah demi
+              langkah, bandingkan kinerja algoritma, dan uji pemahamanmu lewat
+              kuis interaktif.
             </p>
           </div>
+
           <div className="hero-park" aria-hidden="true">
             <div className="sign">
               MEMORY
@@ -339,7 +199,8 @@ export default function App() {
             <Car index={0} />
             <Car index={1} />
           </div>
-          <div className="choice-grid">
+
+          <div className="choice-grid four-grid">
             <article className="choice">
               <div className="book-art">
                 <span />
@@ -349,25 +210,80 @@ export default function App() {
                 <p className="choice-number">PILIHAN 01</p>
                 <h2>Belajar Materi</h2>
                 <p>
-                  Kenali konsep memory allocation dan algoritmanya sebelum
-                  mencoba.
+                  Kenali konsep memory allocation dan cara kerja First Fit, Best
+                  Fit, serta Worst Fit.
                 </p>
               </div>
-              <button className="primary" onClick={() => go("learn")}>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => go("learn")}
+              >
                 Mulai Belajar <span>→</span>
               </button>
             </article>
-            <article className="choice">
-              <Car index={2} />
+
+            <article className="choice highlight-choice">
+              <div className="choice-car-art">
+                <Car index={0} />
+              </div>
               <div>
-                <p className="choice-number">PILIHAN 02</p>
-                <h2>Langsung Latihan</h2>
+                <p className="choice-number featured-number">
+                  PILIHAN 02 · FITUR UTAMA
+                </p>
+                <h2>Simulasi Memori</h2>
                 <p>
-                  Kerjakan tantangan dan pilih slot parkir yang tepat untuk
-                  setiap mobil.
+                  Atur blok memori & proses sendiri. Amati pergerakan mobil
+                  masuk slot langkah demi langkah.
                 </p>
               </div>
-              <button className="primary coral" onClick={() => go("setup")}>
+              <button
+                type="button"
+                className="primary coral"
+                onClick={() => go("simulation")}
+              >
+                Buka Simulasi <span>→</span>
+              </button>
+            </article>
+
+            <article className="choice">
+              <div className="choice-car-art">
+                <Car index={2} />
+              </div>
+              <div>
+                <p className="choice-number">PILIHAN 03</p>
+                <h2>Perbandingan Kinerja</h2>
+                <p>
+                  Bandingkan efisiensi, fragmentasi, dan keberhasilan ketiga
+                  algoritma dalam tabel & grafik.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => go("comparison")}
+              >
+                Lihat Perbandingan <span>→</span>
+              </button>
+            </article>
+
+            <article className="choice">
+              <div className="choice-car-art">
+                <Car index={4} />
+              </div>
+              <div>
+                <p className="choice-number">PILIHAN 04</p>
+                <h2>Latihan / Kuis</h2>
+                <p>
+                  Uji kemampuan analisismu dengan kuis alokasi memori 4 pilihan
+                  tanpa clue.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => go("setup")}
+              >
                 Mulai Latihan <span>→</span>
               </button>
             </article>
@@ -375,13 +291,18 @@ export default function App() {
         </section>
       )}
 
+      {/* 2. BELAJAR MATERI */}
       {page === "learn" && (
         <section className="page narrow">
           <Back onClick={() => (lesson ? setLesson(lesson - 1) : go("home"))} />
           <div className="progress-head">
             <span>Materi {lesson + 1} dari 6</span>
-            <button className="text-button" onClick={() => go("setup")}>
-              Langsung Latihan
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => go("simulation")}
+            >
+              Langsung Coba Simulasi
             </button>
           </div>
           <div className="progress">
@@ -396,13 +317,15 @@ export default function App() {
             <p className="lead">{lessons[lesson].text}</p>
             {lesson === 1 && (
               <p className="note">
-                <b>Model simulator:</b> Fixed partition. Satu process menempati
-                satu block dan block tidak dibagikan lagi.
+                <b>Model simulator:</b> Fixed Partition Allocation. Satu process
+                menempati satu block dan block tidak dibagikan lagi. Sisa ruang
+                dihitung sebagai internal fragmentation.
               </p>
             )}
           </article>
           <div className="lesson-actions">
             <button
+              type="button"
               className="secondary"
               disabled={lesson === 0}
               onClick={() => setLesson(lesson - 1)}
@@ -410,18 +333,52 @@ export default function App() {
               Sebelumnya
             </button>
             {lesson < 5 ? (
-              <button className="primary" onClick={() => setLesson(lesson + 1)}>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => setLesson(lesson + 1)}
+              >
                 Selanjutnya →
               </button>
             ) : (
-              <button className="primary" onClick={() => go("setup")}>
-                Mulai Latihan →
+              <button
+                type="button"
+                className="primary coral"
+                onClick={() => go("simulation")}
+              >
+                Mulai Simulasi Interaktif →
               </button>
             )}
           </div>
         </section>
       )}
 
+      {/* 3. SIMULASI MEMORI (FITUR UTAMA) */}
+      {page === "simulation" && (
+        <section className="page full-page">
+          <SimulationPage
+            blocks={blocks}
+            setBlocks={setBlocks}
+            processes={processes}
+            setProcesses={setProcesses}
+            onGoComparison={() => go("comparison")}
+          />
+        </section>
+      )}
+
+      {/* 4. PERBANDINGAN KINERJA ALGORITMA */}
+      {page === "comparison" && (
+        <section className="page full-page">
+          <ComparisonPage
+            blocks={blocks}
+            processes={processes}
+            onGoSimulation={() => go("simulation")}
+            onGoQuiz={() => go("setup")}
+          />
+        </section>
+      )}
+
+      {/* 5. SETUP KUIS / LATIHAN */}
       {page === "setup" && (
         <section className="page narrow">
           <Back onClick={() => go("home")} />
@@ -442,6 +399,7 @@ export default function App() {
             ] as const).map(([id, name, text]) => (
               <button
                 key={id}
+                type="button"
                 className={`mode-card ${algorithm === id ? "selected" : ""}`}
                 onClick={() => setAlgorithm(id)}
               >
@@ -461,6 +419,7 @@ export default function App() {
             ] as const).map(([id, name, text]) => (
               <button
                 key={id}
+                type="button"
                 className={`difficulty-card ${
                   difficulty === id ? "selected" : ""
                 }`}
@@ -472,14 +431,16 @@ export default function App() {
             ))}
           </div>
           <button
+            type="button"
             className="primary full start-quiz"
-            onClick={() => start(true)}
+            onClick={() => startQuiz(true)}
           >
-            Mulai Tantangan →
+            Mulai Tantangan Kuis →
           </button>
         </section>
       )}
 
+      {/* 6. QUIZ RUNNER (4 OPSI, NO CLUE, DESKTOP SINGLE SCREEN) */}
       {page === "quiz" && (
         <section className="page quiz-page">
           <div className="quiz-layout">
@@ -496,18 +457,18 @@ export default function App() {
                 />
               </div>
               <span className="quiz-mode">
-                {algorithmNames[algorithm]} · {difficultyNames[difficulty]}
+                {algorithmLabels[algorithm]} · {difficultyNames[difficulty]}
               </span>
               <h1>Pilih slot memori yang tepat untuk proses ini.</h1>
               <div className="current-process">
                 <Car index={step} />
                 <div>
                   <span>PROSES P{step + 1}</span>
-                  <strong>{currentQ.processSize} KB</strong>
+                  <strong>{currentQ?.processSize} KB</strong>
                 </div>
               </div>
               <div className="algorithm-hint exam-note">
-                <b>Mode Latihan</b>
+                <b>Mode Latihan Kuis</b>
                 <p>
                   Pilih salah satu dari 4 slot. Hasil, nilai, dan pembahasan
                   lengkap akan ditampilkan setelah semua soal selesai.
@@ -523,9 +484,9 @@ export default function App() {
                 <span>Pilih 1 dari 4 slot</span>
               </div>
               <QuizParking
-                blocks={currentQ.blocks}
+                blocks={currentQ ? currentQ.blocks : []}
                 selected={selected}
-                onChoose={choose}
+                onChoose={chooseQuizOption}
               />
             </div>
           </div>
@@ -534,15 +495,17 @@ export default function App() {
               <p>
                 {selected === undefined
                   ? "Pilih salah satu dari 4 slot di atas untuk melanjutkan."
-                  : `Slot ${String.fromCharCode(65 + selected)} (${
-                      currentQ.blocks[selected]
-                    } KB) dipilih. Klik tombol untuk menyimpan jawaban.`}
+                  : `Slot ${String.fromCharCode(65 + selected)} (${currentQ
+                      ?.blocks[
+                      selected
+                    ]} KB) dipilih. Klik tombol untuk menyimpan jawaban.`}
               </p>
             </div>
             <button
+              type="button"
               className="primary"
               disabled={selected === undefined}
-              onClick={submitAnswer}
+              onClick={submitQuizAnswer}
             >
               {step + 1 === questions.length
                 ? "Selesai & Lihat Hasil →"
@@ -552,6 +515,7 @@ export default function App() {
         </section>
       )}
 
+      {/* 7. HASIL EVALUASI KUIS */}
       {page === "result" && (
         <section className="page">
           <div className="result-hero">
@@ -579,8 +543,10 @@ export default function App() {
               <span>Jawaban salah</span>
             </div>
             <div>
-              <strong>{algorithmNames[algorithm]}</strong>
-              <span>Algoritma ({difficultyNames[difficulty]})</span>
+              <strong>
+                {algorithmLabels[algorithm]} ({difficultyNames[difficulty]})
+              </strong>
+              <span>Mode yang Diuji</span>
             </div>
           </div>
           <h2 className="review-title">Pembahasan Setiap Soal</h2>
@@ -607,7 +573,7 @@ export default function App() {
                           KB)
                         </h3>
                         <p className="algo-badge">
-                          Metode: {algorithmNames[algorithm]}
+                          Metode: {algorithmLabels[algorithm]}
                         </p>
                       </div>
                     </div>
@@ -665,11 +631,26 @@ export default function App() {
             })}
           </div>
           <div className="bottom-actions">
-            <button className="secondary" onClick={() => go("setup")}>
-              ← Ganti Mode Latihan
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => go("setup")}
+            >
+              ← Ganti Mode Kuis
             </button>
-            <button className="primary" onClick={() => start(true)}>
-              Coba Soal Baru ({algorithmNames[algorithm]}) →
+            <button
+              type="button"
+              className="primary"
+              onClick={() => startQuiz(true)}
+            >
+              Coba Soal Baru ({algorithmLabels[algorithm]}) →
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => go("simulation")}
+            >
+              Buka Simulasi Memori ⚙
             </button>
           </div>
         </section>
