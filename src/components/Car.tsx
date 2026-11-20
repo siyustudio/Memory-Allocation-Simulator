@@ -15,10 +15,12 @@ export function Car({
   index,
   small = false,
   color,
+  label,
 }: {
   index: number
   small?: boolean
   color?: string
+  label?: string
 }) {
   const carColor = color || CAR_COLORS[index % CAR_COLORS.length]
 
@@ -29,6 +31,7 @@ export function Car({
     >
       <span className="window" />
       <span className="window" />
+      {label && <span className="car-id-label">{label}</span>}
       <span className="wheel left" />
       <span className="wheel right" />
     </div>

@@ -35,6 +35,22 @@ export function SimulationPage({
     return simulateFixedPartition(blocks, processes, algorithm)
   }, [blocks, processes, algorithm])
 
+  const slotsDensityClass =
+    blocks.length >= 13
+      ? "slots-dense"
+      : blocks.length >= 6
+        ? "slots-compact"
+        : "slots-normal"
+
+  const gridCols = Math.min(Math.max(blocks.length, 1), 6)
+
+  const queueDensityClass =
+    processes.length >= 8
+      ? "queue-dense"
+      : processes.length >= 5
+        ? "queue-compact"
+        : "queue-normal"
+
   // Keep stepIndex within valid bounds
   const safeStepIndex = Math.min(stepIndex, steps.length - 1)
   const currentStep = steps[safeStepIndex] || steps[0]
@@ -98,20 +114,55 @@ export function SimulationPage({
   }
 
   // Block editor handlers
-  function handleAddBlock() {
-    const nextChar = String.fromCharCode(65 + blocks.length)
-    const newBlock: MemoryBlock = {
-      id: nextChar,
-      name: `Block ${nextChar}`,
+  function createNextBlock(index: number, existing: MemoryBlock[]): MemoryBlock {
+    const usedIds = new Set(existing.map((b) => b.id))
+    let letterIdx = index
+    let candidate =
+      letterIdx < 26 ? String.fromCharCode(65 + letterIdx) : `B${letterIdx + 1}`
+    while (usedIds.has(candidate)) {
+      letterIdx++
+      candidate =
+        letterIdx < 26
+          ? String.fromCharCode(65 + letterIdx)
+          : `B${letterIdx + 1}`
+    }
+    return {
+      id: candidate,
+      name: `Block ${candidate}`,
       capacity: 250,
     }
+  }
+
+  function handleAddBlock() {
+    const newBlock = createNextBlock(blocks.length, blocks)
     setBlocks([...blocks, newBlock])
     handleReset()
   }
 
+  function handleBlockCountChange(rawValue: number) {
+    const target = Number.isNaN(rawValue)
+      ? 0
+      : Math.max(0, Math.min(30, Math.floor(rawValue)))
+    if (target === blocks.length) return
+    if (target < blocks.length) {
+      setBlocks(blocks.slice(0, target))
+    } else {
+      const nextBlocks = [...blocks]
+      while (nextBlocks.length < target) {
+        nextBlocks.push(createNextBlock(nextBlocks.length, nextBlocks))
+      }
+      setBlocks(nextBlocks)
+    }
+    handleReset()
+  }
+
   function handleDeleteBlock(id: string) {
-    if (blocks.length <= 1) return
     setBlocks(blocks.filter((b) => b.id !== id))
+    handleReset()
+  }
+
+  function handleBlockNameChange(id: string, name: string) {
+    setBlocks(blocks.map((b) => (b.id === id ? { ...b, name } : b)))
     handleReset()
   }
 
@@ -124,21 +175,55 @@ export function SimulationPage({
   }
 
   // Process editor handlers
-  function handleAddProcess() {
-    const nextIdx = processes.length + 1
-    const newProcess: MemoryProcess = {
-      id: `P${nextIdx}`,
-      name: `Process P${nextIdx}`,
-      size: 150,
-      colorIndex: (nextIdx - 1) % 8,
+  function createNextProcess(
+    index: number,
+    existing: MemoryProcess[],
+  ): MemoryProcess {
+    const usedIds = new Set(existing.map((p) => p.id))
+    let num = index + 1
+    let candidate = `P${num}`
+    while (usedIds.has(candidate)) {
+      num++
+      candidate = `P${num}`
     }
+    return {
+      id: candidate,
+      name: candidate,
+      size: 150,
+      colorIndex: (num - 1) % 8,
+    }
+  }
+
+  function handleAddProcess() {
+    const newProcess = createNextProcess(processes.length, processes)
     setProcesses([...processes, newProcess])
     handleReset()
   }
 
+  function handleProcessCountChange(rawValue: number) {
+    const target = Number.isNaN(rawValue)
+      ? 0
+      : Math.max(0, Math.min(30, Math.floor(rawValue)))
+    if (target === processes.length) return
+    if (target < processes.length) {
+      setProcesses(processes.slice(0, target))
+    } else {
+      const nextProcesses = [...processes]
+      while (nextProcesses.length < target) {
+        nextProcesses.push(createNextProcess(nextProcesses.length, nextProcesses))
+      }
+      setProcesses(nextProcesses)
+    }
+    handleReset()
+  }
+
   function handleDeleteProcess(id: string) {
-    if (processes.length <= 1) return
     setProcesses(processes.filter((p) => p.id !== id))
+    handleReset()
+  }
+
+  function handleProcessNameChange(id: string, name: string) {
+    setProcesses(processes.map((p) => (p.id === id ? { ...p, name } : p)))
     handleReset()
   }
 
@@ -251,18 +336,46 @@ export function SimulationPage({
                   <h3>1. Blok Memori (Tempat Parkir)</h3>
                   <span className="badge-count">{blocks.length} Blok</span>
                 </div>
-                <button
-                  type="button"
-                  className="add-item-btn"
-                  onClick={handleAddBlock}
-                >
-                  + Tambah Blok
-                </button>
+                <div className="editor-count-controls">
+                  <label className="count-input-wrap">
+                    <span>Jumlah:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={blocks.length}
+                      onChange={(e) =>
+                        handleBlockCountChange(Number(e.target.value))
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="add-item-btn"
+                    onClick={handleAddBlock}
+                  >
+                    + Tambah
+                  </button>
+                </div>
               </div>
               <div className="item-inputs-list">
+                {blocks.length === 0 && (
+                  <p className="editor-empty-hint">
+                    Jumlah blok diatur ke 0. Ubah angka jumlah atau klik + Tambah.
+                  </p>
+                )}
                 {blocks.map((block) => (
                   <div key={block.id} className="input-row">
-                    <span className="block-tag">{block.name}</span>
+                    <input
+                      type="text"
+                      className="name-edit-input"
+                      value={block.name}
+                      onChange={(e) =>
+                        handleBlockNameChange(block.id, e.target.value)
+                      }
+                      placeholder="Nama blok"
+                      aria-label={`Nama ${block.id}`}
+                    />
                     <div className="unit-input">
                       <input
                         type="number"
@@ -281,7 +394,6 @@ export function SimulationPage({
                     <button
                       type="button"
                       className="delete-item-btn"
-                      disabled={blocks.length <= 1}
                       onClick={() => handleDeleteBlock(block.id)}
                       title="Hapus blok ini"
                     >
@@ -299,20 +411,48 @@ export function SimulationPage({
                   <h3>2. Proses (Mobil)</h3>
                   <span className="badge-count">{processes.length} Proses</span>
                 </div>
-                <button
-                  type="button"
-                  className="add-item-btn"
-                  onClick={handleAddProcess}
-                >
-                  + Tambah Proses
-                </button>
+                <div className="editor-count-controls">
+                  <label className="count-input-wrap">
+                    <span>Jumlah:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={processes.length}
+                      onChange={(e) =>
+                        handleProcessCountChange(Number(e.target.value))
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="add-item-btn"
+                    onClick={handleAddProcess}
+                  >
+                    + Tambah
+                  </button>
+                </div>
               </div>
               <div className="item-inputs-list">
+                {processes.length === 0 && (
+                  <p className="editor-empty-hint">
+                    Jumlah proses diatur ke 0. Ubah angka jumlah atau klik + Tambah.
+                  </p>
+                )}
                 {processes.map((p, idx) => (
                   <div key={p.id} className="input-row">
                     <div className="process-tag">
                       <Car index={p.colorIndex ?? idx} small />
-                      <span>{p.name}</span>
+                      <input
+                        type="text"
+                        className="name-edit-input"
+                        value={p.name}
+                        onChange={(e) =>
+                          handleProcessNameChange(p.id, e.target.value)
+                        }
+                        placeholder="Nama proses"
+                        aria-label={`Nama ${p.id}`}
+                      />
                     </div>
                     <div className="unit-input">
                       <input
@@ -329,7 +469,6 @@ export function SimulationPage({
                     <button
                       type="button"
                       className="delete-item-btn"
-                      disabled={processes.length <= 1}
                       onClick={() => handleDeleteProcess(p.id)}
                       title="Hapus proses ini"
                     >
@@ -419,7 +558,7 @@ export function SimulationPage({
             <h2>Visualisasi Area Parkir Memori</h2>
             <p>
               Biru: Kosong | Kuning: Sedang Diperiksa | Hijau: Berhasil Parkir |
-              Abu-abu: Terisi
+              Abu-abu: Terisi | Arsiran: Ruang Kosong / Fragmentasi
             </p>
           </div>
           <div className="color-legend">
@@ -427,119 +566,157 @@ export function SimulationPage({
             <span className="legend-item legend-yellow">Diperiksa</span>
             <span className="legend-item legend-green">Berhasil</span>
             <span className="legend-item legend-gray">Terisi</span>
+            <span className="legend-item legend-frag">Fragmentasi / Free</span>
           </div>
         </div>
 
-        <div className="parking-slots-container">
-          {blocks.map((block) => {
-            const allocation = currentStep.allocationsSoFar.find(
-              (a) => a.block.id === block.id,
-            )
-            const isChecking = currentStep.checkingBlockId === block.id
-            const isJustAllocated = currentStep.allocatedBlockId === block.id
-
-            let slotClass = "slot-empty"
-            if (allocation) {
-              slotClass = isJustAllocated
-                ? "slot-just-allocated"
-                : "slot-occupied"
-            } else if (isChecking) {
-              slotClass = "slot-checking"
-            }
-
-            return (
-              <div key={block.id} className={`sim-park-slot ${slotClass}`}>
-                <div className="slot-top-row">
-                  <span className="slot-id-badge">{block.name}</span>
-                  <span className="slot-capacity-badge">
-                    {block.capacity} KB
-                  </span>
-                </div>
-
-                <div className="slot-content-area">
-                  {allocation ? (
-                    <div className="parked-car-box">
-                      <Car
-                        index={allocation.process.colorIndex}
-                        color={
-                          allocation.process.colorIndex !== undefined
-                            ? undefined
-                            : undefined
-                        }
-                      />
-                      <div className="parked-meta">
-                        <strong>{allocation.process.name}</strong>
-                        <span>{allocation.process.size} KB</span>
-                      </div>
-                      <div className="fragmentation-pill">
-                        Sisa: <b>{allocation.remainder} KB</b>
-                      </div>
-                    </div>
-                  ) : isChecking ? (
-                    <div className="checking-box">
-                      <span className="scan-line" />
-                      <p>
-                        Sedang diperiksa oleh {algorithmLabels[algorithm]}...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="empty-box">
-                      <span>Slot Kosong</span>
-                      <small>Kapasitas: {block.capacity} KB</small>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Process Queue Strip below parking */}
-        <div className="sim-process-strip">
-          <div className="strip-title">
-            <b>Antrean Proses:</b>
+        {blocks.length === 0 ? (
+          <div className="parking-empty-state">
+            <strong>Tidak ada blok memori (0 Blok)</strong>
             <span>
-              Urutan proses yang dialokasikan dalam model Fixed Partition
+              Atur jumlah blok memori lebih dari 0 pada panel pengaturan untuk
+              menampilkan slot parkir.
             </span>
           </div>
-          <div className="strip-items">
-            {processes.map((p, idx) => {
-              const isAllocated = currentStep.allocationsSoFar.some(
-                (a) => a.process.id === p.id,
+        ) : (
+          <div
+            className={`parking-slots-container ${slotsDensityClass}`}
+            style={{ "--slot-cols": gridCols } as React.CSSProperties}
+          >
+            {blocks.map((block) => {
+              const allocation = currentStep.allocationsSoFar.find(
+                (a) => a.block.id === block.id,
               )
-              const isFailed = currentStep.failedSoFar.some(
-                (f) => f.id === p.id,
-              )
-              const isCurrent = currentStep.activeProcessIndex === idx
+              const isChecking = currentStep.checkingBlockId === block.id
+              const isJustAllocated = currentStep.allocatedBlockId === block.id
 
-              let badgeText = "Menunggu"
-              let itemClass = "status-waiting"
-              if (isAllocated) {
-                const alloc = currentStep.allocationsSoFar.find(
-                  (a) => a.process.id === p.id,
-                )
-                badgeText = `Terparkir di ${alloc?.block.name}`
-                itemClass = "status-parked"
-              } else if (isFailed) {
-                badgeText = "Gagal (Tidak muat)"
-                itemClass = "status-failed"
-              } else if (isCurrent) {
-                badgeText = "Sedang diproses"
-                itemClass = "status-active"
+              let slotClass = "slot-empty"
+              if (allocation) {
+                slotClass = isJustAllocated
+                  ? "slot-just-allocated"
+                  : "slot-occupied"
+              } else if (isChecking) {
+                slotClass = "slot-checking"
               }
 
+              const displayBlockName = block.name.trim() || block.id
+              const displayProcessName = allocation
+                ? allocation.process.name.trim() || allocation.process.id
+                : ""
+
               return (
-                <div key={p.id} className={`process-pill-card ${itemClass}`}>
-                  <Car index={p.colorIndex ?? idx} small />
-                  <div className="process-pill-meta">
-                    <strong>{p.name}</strong>
-                    <span>{p.size} KB</span>
+                <div
+                  key={block.id}
+                  className={`sim-park-slot ${slotClass}`}
+                  title={`${displayBlockName} (${block.capacity} KB)`}
+                >
+                  <div className="slot-top-row">
+                    <span className="slot-id-badge">{displayBlockName}</span>
+                    <span className="slot-capacity-badge">
+                      {block.capacity} KB
+                    </span>
                   </div>
-                  <span className="process-state-badge">{badgeText}</span>
+
+                  <div className="slot-content-area">
+                    {allocation ? (
+                      <div className="parked-car-box">
+                        <div
+                          className={`slot-frag-banner ${allocation.remainder === 0 ? "frag-zero" : ""}`}
+                          title={`Free Space: ${allocation.remainder} KB`}
+                        >
+                          Free Space: {allocation.remainder} KB
+                        </div>
+                        <Car
+                          index={allocation.process.colorIndex}
+                          small={blocks.length >= 5}
+                          label={displayProcessName}
+                        />
+                        <div className="parked-meta">
+                          <strong>{allocation.process.size} KB</strong>
+                        </div>
+                      </div>
+                    ) : isChecking ? (
+                      <div className="checking-box">
+                        <span className="scan-line" />
+                        <p>Memeriksa...</p>
+                      </div>
+                    ) : (
+                      <div
+                        className="slot-free-zone"
+                        title={`Free Space: ${block.capacity} KB`}
+                      >
+                        <span className="free-zone-badge">Free Space</span>
+                        <strong className="free-zone-size">
+                          {block.capacity} KB
+                        </strong>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             })}
           </div>
+        )}
+
+        {/* Process Queue Strip below parking */}
+        <div className={`sim-process-strip ${queueDensityClass}`}>
+          <div className="strip-title">
+            <b>Antrean Proses ({processes.length})</b>
+            <span>Fixed Partition Queue</span>
+          </div>
+          {processes.length === 0 ? (
+            <div className="queue-empty-state">
+              Antrean proses kosong (0 Proses).
+            </div>
+          ) : (
+            <div className="strip-items">
+              {processes.map((p, idx) => {
+                const isAllocated = currentStep.allocationsSoFar.some(
+                  (a) => a.process.id === p.id,
+                )
+                const isFailed = currentStep.failedSoFar.some(
+                  (f) => f.id === p.id,
+                )
+                const isCurrent = currentStep.activeProcessIndex === idx
+
+                let badgeText = "Waiting"
+                let itemClass = "status-waiting"
+                if (isAllocated) {
+                  badgeText = "Parked"
+                  itemClass = "status-parked"
+                } else if (isFailed) {
+                  badgeText = "Failed"
+                  itemClass = "status-failed"
+                } else if (isCurrent) {
+                  badgeText = "Allocating"
+                  itemClass = "status-active"
+                }
+
+                const progressPct = isAllocated ? 100 : 0
+                const displayProcessName = p.name.trim() || p.id
+
+                return (
+                  <div
+                    key={p.id}
+                    className={`queue-car-card ${itemClass}`}
+                    title={`${displayProcessName} • ${progressPct}% • ${p.size} KB (${badgeText})`}
+                  >
+                    <span className="queue-status-pill">{badgeText}</span>
+                    <div className="queue-car-wrap">
+                      <Car
+                        index={p.colorIndex ?? idx}
+                        small
+                        label={displayProcessName}
+                      />
+                    </div>
+                    <span className="queue-progress-meta">
+                      {progressPct}% • {p.size} KB
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </section>
 
